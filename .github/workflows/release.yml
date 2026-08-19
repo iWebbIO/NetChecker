@@ -26,13 +26,15 @@ jobs:
           cache: true
       - run: flutter pub get
       - name: Decode keystore
-        if: ${{ secrets.KEYSTORE != '' }}
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE }}
-        run: echo "$KEYSTORE_B64" | base64 --decode > android/app/keystore.jks
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 --decode > android/app/keystore.jks
+            echo "KEYSTORE_FILE=keystore.jks" >> "$GITHUB_ENV"
+          fi
       - name: Build APK
         env:
-          KEYSTORE_FILE: ${{ secrets.KEYSTORE != '' && 'keystore.jks' || '' }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
