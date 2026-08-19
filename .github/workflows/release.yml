@@ -1,0 +1,132 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: "3.44.2"
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Decode keystore
+        if: ${{ secrets.KEYSTORE != '' }}
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE }}
+        run: echo "$KEYSTORE_B64" | base64 --decode > android/app/keystore.jks
+      - name: Build APK
+        env:
+          KEYSTORE_FILE: ${{ secrets.KEYSTORE != '' && 'keystore.jks' || '' }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          flutter build apk --release --split-per-abi
+          flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/*.apk
+
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build windows --release
+      - name: Zip
+        shell: pwsh
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath netchecker-windows.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-zip
+          path: netchecker-windows.zip
+
+  linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: sudo apt-get update
+      - run: sudo apt-get install -y ninja-build cmake libgtk-3-dev clang pkg-config
+      - run: flutter pub get
+      - run: flutter build linux --release
+      - name: Stage bundle
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          mkdir -p dist
+          cp -a build/linux/x64/release/bundle dist/bundle
+          cp linux/packaging/nfpm.yaml dist/nfpm.yaml
+          cp linux/packaging/netchecker.desktop dist/netchecker.desktop
+          cp linux/packaging/netchecker.sh dist/netchecker.sh
+          chmod +x dist/netchecker.sh dist/bundle/netchecker
+          (cd build/linux/x64/release/bundle && zip -r "$GITHUB_WORKSPACE/netchecker-linux-x64.zip" .)
+      - uses: goreleaser/nfpm@v2
+        with:
+          config: dist/nfpm.yaml
+          packager: deb
+          target: netchecker.deb
+        env:
+          VERSION: ${{ env.VERSION }}
+      - uses: goreleaser/nfpm@v2
+        with:
+          config: dist/nfpm.yaml
+          packager: rpm
+          target: netchecker.rpm
+        env:
+          VERSION: ${{ env.VERSION }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: |
+            netchecker.deb
+            netchecker.rpm
+            netchecker-linux-x64.zip
+
+  publish:
+    name: GitHub Release
+    needs: [android, windows, linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            out/**/*.apk
+            out/**/*.zip
+            out/**/*.deb
+            out/**/*.rpm

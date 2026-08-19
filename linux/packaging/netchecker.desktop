@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=NetChecker
+Comment=Sequential reachability instrument for VPN engineers
+Exec=/opt/netchecker/netchecker
+Icon=netchecker
+Terminal=false
+Categories=Network;Utility;
+StartupNotify=true
