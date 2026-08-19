@@ -8,6 +8,7 @@ on:
 
 env:
   FLUTTER_VERSION: "3.44.2"
+  NFPM_VERSION: "2.47.0"
 
 jobs:
   android:
@@ -91,20 +92,16 @@ jobs:
           cp linux/packaging/netchecker.sh dist/netchecker.sh
           chmod +x dist/netchecker.sh dist/bundle/netchecker
           (cd build/linux/x64/release/bundle && zip -r "$GITHUB_WORKSPACE/netchecker-linux-x64.zip" .)
-      - uses: goreleaser/nfpm@v2
-        with:
-          config: dist/nfpm.yaml
-          packager: deb
-          target: netchecker.deb
-        env:
-          VERSION: ${{ env.VERSION }}
-      - uses: goreleaser/nfpm@v2
-        with:
-          config: dist/nfpm.yaml
-          packager: rpm
-          target: netchecker.rpm
-        env:
-          VERSION: ${{ env.VERSION }}
+      - name: Install nFPM
+        run: |
+          curl -fsSL "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin nfpm
+          nfpm --version
+      - name: Package deb and rpm
+        working-directory: dist
+        run: |
+          nfpm package --config nfpm.yaml --packager deb --target "$GITHUB_WORKSPACE/netchecker.deb"
+          nfpm package --config nfpm.yaml --packager rpm --target "$GITHUB_WORKSPACE/netchecker.rpm"
       - uses: actions/upload-artifact@v4
         with:
           name: linux-packages
