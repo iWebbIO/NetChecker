@@ -106,6 +106,7 @@ class ItemMetrics {
     required this.minMs,
     required this.maxMs,
     required this.jitterMs,
+    required this.stdDevMs,
     required this.uptimePercent,
     required this.totalChecks,
     required this.okCount,
@@ -118,6 +119,7 @@ class ItemMetrics {
   final int minMs;
   final int maxMs;
   final double jitterMs;
+  final double stdDevMs;
   final double uptimePercent;
   final int totalChecks;
   final int okCount;
@@ -125,11 +127,14 @@ class ItemMetrics {
   final String filterStatus;
   final bool isClean;
 
+  double get lossPercent => totalChecks == 0 ? 0.0 : (failCount / totalChecks) * 100.0;
+
   static const empty = ItemMetrics(
     avgMs: 0,
     minMs: 0,
     maxMs: 0,
     jitterMs: 0,
+    stdDevMs: 0,
     uptimePercent: 0,
     totalChecks: 0,
     okCount: 0,
@@ -166,6 +171,7 @@ class ItemMetrics {
     int minMs = 0;
     int maxMs = 0;
     double jitter = 0;
+    double stdDev = 0;
 
     if (latencies.isNotEmpty) {
       final sum = latencies.reduce((a, b) => a + b);
@@ -179,6 +185,12 @@ class ItemMetrics {
           diffSum += (latencies[i] - latencies[i - 1]).abs();
         }
         jitter = diffSum / (latencies.length - 1);
+
+        double varianceSum = 0;
+        for (final val in latencies) {
+          varianceSum += math.pow(val - avgMs, 2);
+        }
+        stdDev = math.sqrt(varianceSum / latencies.length);
       }
     }
 
@@ -227,6 +239,7 @@ class ItemMetrics {
       minMs: minMs,
       maxMs: maxMs,
       jitterMs: jitter,
+      stdDevMs: stdDev,
       uptimePercent: uptimePercent,
       totalChecks: total,
       okCount: okCount,
@@ -235,6 +248,117 @@ class ItemMetrics {
       isClean: isClean,
     );
   }
+}
+
+class GeoInfo {
+  const GeoInfo({
+    this.country,
+    this.countryCode,
+    this.city,
+    this.lat,
+    this.lon,
+    this.isp,
+  });
+
+  final String? country;
+  final String? countryCode;
+  final String? city;
+  final double? lat;
+  final double? lon;
+  final String? isp;
+
+  String get locationString {
+    final parts = [if (city != null && city!.isNotEmpty) city, if (country != null && country!.isNotEmpty) country];
+    return parts.isEmpty ? 'Unknown Location' : parts.join(', ');
+  }
+
+  String get flagEmoji {
+    if (countryCode == null || countryCode!.length != 2) return '🌐';
+    final code = countryCode!.toUpperCase();
+    final first = code.codeUnitAt(0) - 0x41 + 0x1F1E6;
+    final second = code.codeUnitAt(1) - 0x41 + 0x1F1E6;
+    return String.fromCharCode(first) + String.fromCharCode(second);
+  }
+}
+
+class AsnInfo {
+  const AsnInfo({
+    this.asn,
+    this.holder,
+    this.prefix,
+    this.country,
+  });
+
+  final int? asn;
+  final String? holder;
+  final String? prefix;
+  final String? country;
+
+  String get label {
+    if (asn == null) return 'Unknown AS';
+    if (holder != null && holder!.isNotEmpty) return 'AS$asn · $holder';
+    return 'AS$asn';
+  }
+}
+
+class TracerouteHop {
+  const TracerouteHop({
+    required this.ttl,
+    this.ip,
+    this.hostname,
+    this.rttMs,
+    this.lossPercent = 0.0,
+    this.sent = 1,
+    this.recv = 1,
+    this.bestMs,
+    this.worstMs,
+    this.avgMs,
+    this.stdDevMs,
+    this.asn,
+    this.geo,
+    this.status = HitStatus.ok,
+    this.detail,
+  });
+
+  final int ttl;
+  final String? ip;
+  final String? hostname;
+  final int? rttMs;
+  final double lossPercent;
+  final int sent;
+  final int recv;
+  final int? bestMs;
+  final int? worstMs;
+  final double? avgMs;
+  final double? stdDevMs;
+  final AsnInfo? asn;
+  final GeoInfo? geo;
+  final HitStatus status;
+  final String? detail;
+
+  String get displayHost {
+    if (hostname != null && hostname!.isNotEmpty) return hostname!;
+    if (ip != null && ip!.isNotEmpty) return ip!;
+    return '* * * (No Response)';
+  }
+
+  bool get hasResponse => ip != null || rttMs != null;
+}
+
+class TracerouteResult {
+  const TracerouteResult({
+    required this.target,
+    required this.hops,
+    this.isComplete = false,
+    required this.timestamp,
+    this.error,
+  });
+
+  final String target;
+  final List<TracerouteHop> hops;
+  final bool isComplete;
+  final DateTime timestamp;
+  final String? error;
 }
 
 class Hit {

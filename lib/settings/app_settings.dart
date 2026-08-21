@@ -12,6 +12,9 @@ class AppSettings {
     this.alwaysOnTop = false,
     this.nicId = 'any',
     this.running = true,
+    this.privacyMode = false,
+    this.maxRounds = 0,
+    this.exportFormat = 'markdown',
   });
 
   final int httpTimeoutMs;
@@ -24,6 +27,9 @@ class AppSettings {
   final bool alwaysOnTop;
   final String nicId;
   final bool running;
+  final bool privacyMode;
+  final int maxRounds;
+  final String exportFormat;
 
   Duration get httpTimeout => Duration(milliseconds: httpTimeoutMs);
   Duration get itemDelay => Duration(milliseconds: itemDelayMs);
@@ -41,6 +47,9 @@ class AppSettings {
     bool? alwaysOnTop,
     String? nicId,
     bool? running,
+    bool? privacyMode,
+    int? maxRounds,
+    String? exportFormat,
   }) {
     return AppSettings(
       httpTimeoutMs: httpTimeoutMs ?? this.httpTimeoutMs,
@@ -53,6 +62,9 @@ class AppSettings {
       alwaysOnTop: alwaysOnTop ?? this.alwaysOnTop,
       nicId: nicId ?? this.nicId,
       running: running ?? this.running,
+      privacyMode: privacyMode ?? this.privacyMode,
+      maxRounds: maxRounds ?? this.maxRounds,
+      exportFormat: exportFormat ?? this.exportFormat,
     );
   }
 
@@ -68,6 +80,9 @@ class AppSettings {
       alwaysOnTop: p.getBool('alwaysOnTop') ?? false,
       nicId: p.getString('nicId') ?? 'any',
       running: p.getBool('running') ?? true,
+      privacyMode: p.getBool('privacyMode') ?? false,
+      maxRounds: p.getInt('maxRounds') ?? 0,
+      exportFormat: p.getString('exportFormat') ?? 'markdown',
     );
   }
 
@@ -82,5 +97,8 @@ class AppSettings {
     await p.setBool('alwaysOnTop', alwaysOnTop);
     await p.setString('nicId', nicId);
     await p.setBool('running', running);
+    await p.setBool('privacyMode', privacyMode);
+    await p.setInt('maxRounds', maxRounds);
+    await p.setString('exportFormat', exportFormat);
   }
 }

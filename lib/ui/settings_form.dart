@@ -161,6 +161,52 @@ class _SettingsFormState extends State<SettingsForm> {
             },
           ),
         ],
+        const SizedBox(height: 12),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Privacy Mode'),
+          subtitle: const Text('Masks hostnames and IPs on the homescreen'),
+          value: _draft.privacyMode,
+          onChanged: (v) => setState(() {
+            _draft = _draft.copyWith(privacyMode: v);
+          }),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Export Format',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 4),
+        DropdownButton<String>(
+          isExpanded: true,
+          value: _draft.exportFormat,
+          dropdownColor: const Color(0xFF0C0A10),
+          items: const [
+            DropdownMenuItem(value: 'markdown', child: Text('Markdown Table')),
+            DropdownMenuItem(value: 'csv', child: Text('CSV Spreadsheet')),
+            DropdownMenuItem(value: 'json', child: Text('JSON Report')),
+            DropdownMenuItem(value: 'plaintext', child: Text('Plaintext Summary')),
+          ],
+          onChanged: (fmt) {
+            if (fmt == null) return;
+            setState(() => _draft = _draft.copyWith(exportFormat: fmt));
+          },
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: () {
+            widget.engine.resetAllStats();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('All statistics and telemetry reset')),
+            );
+          },
+          icon: const Icon(Icons.refresh, size: 16),
+          label: const Text('Reset All Statistics'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFFEF4444),
+            side: const BorderSide(color: Color(0x33EF4444)),
+          ),
+        ),
         const SizedBox(height: 20),
         FilledButton(onPressed: _save, child: const Text('Apply')),
       ],

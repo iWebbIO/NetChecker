@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/catalog.dart';
+import '../export/report_export.dart';
 import '../settings/app_settings.dart';
 import 'dns.dart';
 import 'models.dart';
@@ -62,6 +63,39 @@ class ProbeEngine extends ChangeNotifier {
   bool _disposed = false;
   bool _loops = false;
   int _epoch = 0;
+  bool freezeDisplay = false;
+
+  void toggleFreeze() {
+    freezeDisplay = !freezeDisplay;
+    notifyListeners();
+  }
+
+  void resetStats(String id) {
+    sampleHistory.remove(id);
+    domainHits.remove(id);
+    dnsHits.remove(id);
+    edgeHits.remove(id);
+    huntHits.remove(id);
+    protoHits.remove(id);
+    notifyListeners();
+  }
+
+  void resetAllStats() {
+    sampleHistory.clear();
+    domainHits.clear();
+    dnsHits.clear();
+    edgeHits.clear();
+    huntHits.clear();
+    protoHits.clear();
+    notifyListeners();
+  }
+
+  int get totalOk => domainHits.values.where((h) => h.status == HitStatus.ok).length;
+  int get totalDown => domainHits.values
+      .where((h) => h.status == HitStatus.fail || h.status == HitStatus.timeout)
+      .length;
+  bool get isRunning => settings.running;
+  List<DomainTarget> get effectiveDomains => domains;
 
   int get okCount =>
       domainHits.values.where((h) => h.status == HitStatus.ok).length;
@@ -382,39 +416,16 @@ class ProbeEngine extends ChangeNotifier {
     }
   }
 
-  String report() {
-    final buf = StringBuffer();
-    buf.writeln('NetChecker ${DateTime.now().toIso8601String()}');
-    buf.writeln(
-      'nic=${nic.label} timeout=${settings.httpTimeoutMs}ms delay=${settings.itemDelayMs}ms',
-    );
-    buf.writeln('DNS');
-    for (final r in resolvers) {
-      final h = dnsHits[r.address] ?? Hit.idle;
-      buf.writeln('  ${r.short} ${r.address} ${h.readout} ${h.detail ?? ''}');
-    }
-    buf.writeln('PROTO');
-    for (final p in kProtoTargets) {
-      final h = protoHits[p.id] ?? Hit.idle;
-      buf.writeln('  ${p.label} ${h.readout} ${h.detail ?? ''}');
-    }
-    buf.writeln('EDGE TLS ${kDefaultEdges.first.sni}');
-    for (final e in edges) {
-      final h = edgeHits[e.ip] ?? Hit.idle;
-      buf.writeln('  ${e.ip} ${h.readout}');
-    }
-    buf.writeln('HUNT ${settings.huntName}');
-    for (final r in resolvers) {
-      final h = huntHits[r.address] ?? Hit.idle;
-      buf.writeln('  ${r.short} ${h.readout} ${h.detail ?? ''}');
-    }
-    buf.writeln('SITES');
-    for (final d in domains) {
-      final h = domainHits[d.host] ?? Hit.idle;
-      buf.writeln('  ${d.host} ${h.readout} ${h.detail ?? ''}');
-    }
-    return buf.toString();
+  String buildReport({ExportFormat? format}) {
+    final expFormat = format ??
+        ExportFormat.values.firstWhere(
+          (f) => f.name == settings.exportFormat,
+          orElse: () => ExportFormat.markdown,
+        );
+    return ReportExport.generate(this, format: expFormat);
   }
+
+  String report() => buildReport(format: ExportFormat.plaintext);
 
   @override
   void dispose() {

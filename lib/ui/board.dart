@@ -34,6 +34,7 @@ class ProbeBoard extends StatelessWidget {
                 SizedBox(
                   width: dnsW,
                   child: ProbeCell(
+                    privacyMode: engine.settings.privacyMode,
                     label: r.short,
                     hit: engine.dnsHits[r.address] ?? Hit.idle,
                     live: engine.liveDns == r.address,
@@ -70,6 +71,7 @@ class ProbeBoard extends StatelessWidget {
                 SizedBox(
                   width: 52,
                   child: ProbeCell(
+                    privacyMode: engine.settings.privacyMode,
                     label: p.label,
                     hit: engine.protoHits[p.id] ?? Hit.idle,
                     live: engine.liveProto == p.id,
@@ -139,6 +141,7 @@ class ProbeBoard extends StatelessWidget {
                 SizedBox(
                   width: edgeW,
                   child: ProbeCell(
+                    privacyMode: engine.settings.privacyMode,
                     label: e.short,
                     hit: engine.edgeHits[e.ip] ?? Hit.idle,
                     live: engine.liveEdge == e.ip,
@@ -174,6 +177,7 @@ class ProbeBoard extends StatelessWidget {
                 SizedBox(
                   width: dnsW,
                   child: ProbeCell(
+                    privacyMode: engine.settings.privacyMode,
                     label: r.short,
                     hit: engine.huntHits[r.address] ?? Hit.idle,
                     live: engine.liveHunt == r.address,
@@ -229,6 +233,7 @@ class ProbeBoard extends StatelessWidget {
                   final d = engine.domains[i];
                   final hit = engine.domainHits[d.host] ?? Hit.idle;
                   return ProbeCell(
+                    privacyMode: engine.settings.privacyMode,
                     label: d.short,
                     hit: hit,
                     live: engine.liveDomain == d.host,
@@ -294,10 +299,11 @@ class _StepRow extends StatelessWidget {
 }
 
 Future<void> copyReport(BuildContext context, ProbeEngine engine) async {
-  await Clipboard.setData(ClipboardData(text: engine.report()));
+  final text = engine.buildReport();
+  await Clipboard.setData(ClipboardData(text: text));
   if (context.mounted) {
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Report copied')));
+    ).showSnackBar(SnackBar(content: Text('Report (${engine.settings.exportFormat.toUpperCase()}) copied to clipboard')));
   }
 }

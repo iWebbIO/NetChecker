@@ -15,6 +15,7 @@ class ProbeCell extends StatelessWidget {
     this.sub,
     this.live = false,
     this.wide = false,
+    this.privacyMode = false,
     this.onCopy,
     this.onTap,
   });
@@ -24,6 +25,7 @@ class ProbeCell extends StatelessWidget {
   final Hit hit;
   final bool live;
   final bool wide;
+  final bool privacyMode;
   final String? onCopy;
   final VoidCallback? onTap;
 
@@ -38,9 +40,18 @@ class ProbeCell extends StatelessWidget {
 
     final minTap = !kIsWeb && Platform.isAndroid ? 48.0 : 0.0;
 
+    String displayLabel = label;
+    if (privacyMode) {
+      if (label.length <= 3) {
+        displayLabel = '***';
+      } else {
+        displayLabel = '${label[0]}***${label[label.length - 1]}';
+      }
+    }
+
     return Semantics(
       button: true,
-      label: '$label ${hit.readout}',
+      label: '$displayLabel ${hit.readout}',
       child: Material(
         color: inverted ? kLive : Colors.transparent,
         child: InkWell(
@@ -74,7 +85,7 @@ class ProbeCell extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      label,
+                      displayLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(

@@ -6,6 +6,8 @@ import '../../probe/engine.dart';
 import '../../probe/models.dart';
 import '../../theme.dart';
 import 'latency_chart.dart';
+import 'latency_histogram.dart';
+import 'route_map_page.dart';
 import 'waterfall_card.dart';
 
 class ItemProfilePage extends StatefulWidget {
@@ -40,6 +42,7 @@ class ItemProfilePage extends StatefulWidget {
 class _ItemProfilePageState extends State<ItemProfilePage> {
   bool _isProbing = false;
   bool _liveMonitor = false;
+  int _chartTab = 0;
   Timer? _liveTimer;
   PhaseBreakdown? _latestPhase;
 
@@ -190,6 +193,25 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
             ),
             actions: [
               IconButton(
+                tooltip: 'Trace Route',
+                icon: const Icon(Icons.alt_route_rounded, size: 18),
+                onPressed: () => RouteMapPage.open(
+                  context,
+                  target: widget.targetInfo.hostOrIp ?? widget.targetInfo.id,
+                  title: widget.targetInfo.title,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Reset Stats',
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                onPressed: () {
+                  widget.engine.resetStats(widget.targetInfo.id);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Statistics reset for this item')),
+                  );
+                },
+              ),
+              IconButton(
                 tooltip: 'Copy Report',
                 icon: const Icon(Icons.copy_rounded, size: 18),
                 onPressed: () => _copyReport(metrics, samples),
@@ -212,6 +234,11 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                     liveMonitor: _liveMonitor,
                     onToggleLive: _toggleLiveMonitor,
                     onPingNow: () => _triggerPing(),
+                    onTraceRoute: () => RouteMapPage.open(
+                      context,
+                      target: widget.targetInfo.hostOrIp ?? widget.targetInfo.id,
+                      title: widget.targetInfo.title,
+                    ),
                   ),
                   const SizedBox(height: 16),
 
@@ -225,12 +252,70 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                   _KpiMetricGrid(metrics: metrics, accentColor: accent),
                   const SizedBox(height: 16),
 
-                  // 4. Ping Timeline Chart
-                  ItemLatencyChart(
-                    samples: samples,
-                    accentColor: accent,
-                    height: 170,
+                  // 4. Chart / Histogram Switcher & Visualization
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0D0A14),
+                      border: Border.all(color: kLine),
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setState(() => _chartTab = 0),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              color: _chartTab == 0 ? const Color(0x1AFFFFFF) : Colors.transparent,
+                              child: Center(
+                                child: Text(
+                                  'PING HISTORY',
+                                  style: TextStyle(
+                                    fontFamily: 'Space Mono',
+                                    fontSize: 10,
+                                    fontWeight: _chartTab == 0 ? FontWeight.bold : FontWeight.normal,
+                                    color: _chartTab == 0 ? kPaper : kMute,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setState(() => _chartTab = 1),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              color: _chartTab == 1 ? const Color(0x1AFFFFFF) : Colors.transparent,
+                              child: Center(
+                                child: Text(
+                                  'FREQUENCY HISTOGRAM',
+                                  style: TextStyle(
+                                    fontFamily: 'Space Mono',
+                                    fontSize: 10,
+                                    fontWeight: _chartTab == 1 ? FontWeight.bold : FontWeight.normal,
+                                    color: _chartTab == 1 ? kPaper : kMute,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(height: 8),
+                  if (_chartTab == 0)
+                    ItemLatencyChart(
+                      samples: samples,
+                      accentColor: accent,
+                      height: 170,
+                    )
+                  else
+                    LatencyHistogramCard(
+                      samples: samples,
+                      accentColor: accent,
+                    ),
                   const SizedBox(height: 16),
 
                   // 5. Connection Steps Breakdown
@@ -273,6 +358,7 @@ class _HeroBanner extends StatelessWidget {
     required this.liveMonitor,
     required this.onToggleLive,
     required this.onPingNow,
+    required this.onTraceRoute,
   });
 
   final ItemProfileInfo targetInfo;
@@ -283,6 +369,7 @@ class _HeroBanner extends StatelessWidget {
   final bool liveMonitor;
   final ValueChanged<bool> onToggleLive;
   final VoidCallback onPingNow;
+  final VoidCallback onTraceRoute;
 
   String _getDisplayTag() {
     if (targetInfo.tag != null && targetInfo.tag!.isNotEmpty) {
@@ -470,7 +557,21 @@ class _HeroBanner extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: onTraceRoute,
+                icon: const Icon(Icons.alt_route_rounded, size: 16),
+                label: const Text('Trace'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: kPaper,
+                  side: const BorderSide(color: Color(0x28FFFFFF)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+              ),
+              const SizedBox(width: 8),
               Container(
                 decoration: BoxDecoration(
                   color: const Color(0x14FFFFFF),
@@ -485,13 +586,13 @@ class _HeroBanner extends StatelessWidget {
                 child: Row(
                   children: [
                     Text(
-                      'Auto-Ping',
+                      'Auto',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: liveMonitor ? const Color(0xFF10B981) : kMute,
                             fontSize: 11,
                           ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 4),
                     SizedBox(
                       height: 24,
                       width: 36,
@@ -692,7 +793,7 @@ class _KpiMetricGrid extends StatelessWidget {
             _KpiCard(
               label: 'STABILITY',
               value: jitterStr,
-              subtext: metrics.jitterMs < 10 ? 'Stable' : 'Varying',
+              subtext: 'StdDev ±${metrics.stdDevMs.toStringAsFixed(1)}ms',
               icon: Icons.graphic_eq_rounded,
               accentColor: const Color(0xFF8B5CF6),
             ),
