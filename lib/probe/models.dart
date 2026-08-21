@@ -87,15 +87,15 @@ class ItemProfileInfo {
   String get categoryLabel {
     switch (category) {
       case ItemCategory.domain:
-        return 'HTTPS DOMAIN';
+        return 'Website';
       case ItemCategory.dns:
-        return 'DNS RESOLVER SPEED';
+        return 'DNS Server';
       case ItemCategory.edge:
-        return 'EDGE CDN ANYCAST IP';
+        return 'CDN Server';
       case ItemCategory.proto:
-        return 'CORE NETWORK PROTOCOL';
+        return 'Network Test';
       case ItemCategory.hunt:
-        return 'DNS POISONING DETECTOR';
+        return 'DNS Check';
     }
   }
 }
@@ -194,31 +194,31 @@ class ItemMetrics {
       filterStatus = phaseAnomaly;
       isClean = false;
     } else if (lastStatus == HitStatus.ok) {
-      filterStatus = 'Clean / Fully Reachable';
+      filterStatus = 'Working normally';
       isClean = true;
     } else if (lastStatus == HitStatus.timeout) {
-      filterStatus = 'Timeout (Packet Drop / Blackhole)';
+      filterStatus = 'Timed out';
       isClean = false;
     } else if (lastDetail.contains('rst')) {
-      filterStatus = 'TCP Reset (DPI RST Injection)';
+      filterStatus = 'Connection reset';
       isClean = false;
     } else if (lastDetail.contains('tls') || lastDetail.contains('hs')) {
-      filterStatus = 'TLS SNI Blocked / Handshake Fail';
+      filterStatus = 'SSL / TLS error';
       isClean = false;
     } else if (lastDetail.contains('nx') || lastDetail.contains('bad ip')) {
-      filterStatus = 'DNS Poisoning / Resolution Failed';
+      filterStatus = 'DNS lookup failed';
       isClean = false;
     } else if (lastDetail.contains('403')) {
-      filterStatus = 'HTTP 403 (Censorship Landing Page)';
+      filterStatus = 'Blocked (HTTP 403)';
       isClean = false;
     } else if (lastDetail.contains('unreach')) {
-      filterStatus = 'Network Unreachable';
+      filterStatus = 'Unreachable';
       isClean = false;
     } else if (lastDetail.contains('refused')) {
-      filterStatus = 'Connection Refused (Port Filtered)';
+      filterStatus = 'Connection refused';
       isClean = false;
     } else {
-      filterStatus = 'Degraded / Probes Failing ($lastDetail)';
+      filterStatus = lastDetail.isNotEmpty ? 'Error ($lastDetail)' : 'Offline';
       isClean = false;
     }
 

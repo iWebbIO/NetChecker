@@ -71,14 +71,14 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
     if (value) {
       _liveTimer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (!_isProbing && mounted) {
-          _triggerDeepProbe(silent: true);
+          _triggerPing(silent: true);
         }
       });
-      _triggerDeepProbe(silent: true);
+      _triggerPing(silent: true);
     }
   }
 
-  Future<void> _triggerDeepProbe({bool silent = false}) async {
+  Future<void> _triggerPing({bool silent = false}) async {
     if (_isProbing) return;
     if (!silent) setState(() => _isProbing = true);
     try {
@@ -131,28 +131,20 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
 
   Future<void> _copyReport(ItemMetrics metrics, List<ProbeSample> samples) async {
     final buf = StringBuffer();
-    buf.writeln('=== NetChecker Diagnostic Profile ===');
+    buf.writeln('=== NetChecker Report ===');
     buf.writeln('Target: ${widget.targetInfo.title} (${widget.targetInfo.categoryLabel})');
-    buf.writeln('ID/Host: ${widget.targetInfo.id}');
-    buf.writeln('Timestamp: ${DateTime.now().toIso8601String()}');
-    buf.writeln('NIC: ${widget.engine.nic.label} (${widget.engine.nic.address ?? "default"})');
-    buf.writeln('Diagnosis: ${metrics.filterStatus}');
-    buf.writeln('Uptime: ${metrics.uptimePercent.toStringAsFixed(1)}% (${metrics.okCount}/${metrics.totalChecks} OK)');
-    buf.writeln('Latency: avg=${metrics.avgMs.toStringAsFixed(1)}ms min=${metrics.minMs}ms max=${metrics.maxMs}ms jitter=${metrics.jitterMs.toStringAsFixed(1)}ms');
-    if (_latestPhase != null) {
-      buf.writeln('Phases: DNS=${_latestPhase!.dnsMs ?? 0}ms TCP=${_latestPhase!.tcpMs ?? 0}ms TLS=${_latestPhase!.tlsMs ?? 0}ms HTTP=${_latestPhase!.httpMs ?? 0}ms (Status: ${_latestPhase!.httpStatusCode ?? "-"})');
-      if (_latestPhase!.resolvedIps != null && _latestPhase!.resolvedIps!.isNotEmpty) {
-        buf.writeln('Resolved IPs: ${_latestPhase!.resolvedIps!.join(", ")}');
-      }
-    }
-    buf.writeln('Recent Samples:');
-    for (final s in samples.reversed.take(10)) {
-      buf.writeln('  ${s.timestamp.toIso8601String()} - ${s.status.name.toUpperCase()} (${s.ms ?? "-"}ms) ${s.detail ?? ""}');
+    buf.writeln('Address: ${widget.targetInfo.id}');
+    buf.writeln('Status: ${metrics.filterStatus}');
+    buf.writeln('Success Rate: ${metrics.uptimePercent.toStringAsFixed(0)}% (${metrics.okCount}/${metrics.totalChecks})');
+    buf.writeln('Ping: avg=${metrics.avgMs.toStringAsFixed(0)}ms min=${metrics.minMs}ms max=${metrics.maxMs}ms');
+    buf.writeln('Recent:');
+    for (final s in samples.reversed.take(8)) {
+      buf.writeln('  ${s.status.name.toUpperCase()} - ${s.ms ?? "-"}ms ${s.detail ?? ""}');
     }
     await Clipboard.setData(ClipboardData(text: buf.toString()));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Diagnostic summary copied to clipboard')),
+        const SnackBar(content: Text('Report copied to clipboard')),
       );
     }
   }
@@ -198,7 +190,7 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
             ),
             actions: [
               IconButton(
-                tooltip: 'Copy Diagnostic Report',
+                tooltip: 'Copy Report',
                 icon: const Icon(Icons.copy_rounded, size: 18),
                 onPressed: () => _copyReport(metrics, samples),
               ),
@@ -210,7 +202,7 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 1. Hero Identity & Live Status Banner
+                  // 1. Hero Identity & Status
                   _HeroBanner(
                     targetInfo: widget.targetInfo,
                     currentHit: currentHit,
@@ -219,24 +211,21 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                     isProbing: _isProbing,
                     liveMonitor: _liveMonitor,
                     onToggleLive: _toggleLiveMonitor,
-                    onRunDeepProbe: () => _triggerDeepProbe(),
+                    onPingNow: () => _triggerPing(),
                   ),
                   const SizedBox(height: 16),
 
-                  // 2. What Is This Test? (Clarification Hero Card)
-                  _ClarificationCard(
+                  // 2. About This Item Card
+                  _AboutCard(
                     targetInfo: widget.targetInfo,
-                    currentHit: currentHit,
-                    metrics: metrics,
-                    accentColor: accent,
                   ),
                   const SizedBox(height: 16),
 
-                  // 3. 4-Card KPI Telemetry Grid
+                  // 3. 4-Card Stats Grid
                   _KpiMetricGrid(metrics: metrics, accentColor: accent),
                   const SizedBox(height: 16),
 
-                  // 4. Interactive Latency Timeline Chart
+                  // 4. Ping Timeline Chart
                   ItemLatencyChart(
                     samples: samples,
                     accentColor: accent,
@@ -244,17 +233,17 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // 5. Multi-Phase Connection Waterfall
+                  // 5. Connection Steps Breakdown
                   ConnectionWaterfallCard(
                     phase: _latestPhase,
                     targetInfo: widget.targetInfo,
                     isProbing: _isProbing,
-                    onRunDeepProbe: () => _triggerDeepProbe(),
+                    onRunDeepProbe: () => _triggerPing(),
                   ),
                   const SizedBox(height: 16),
 
-                  // 6. Technical Specifications Card
-                  _TechnicalSpecsCard(
+                  // 6. Details Table
+                  _DetailsCard(
                     targetInfo: widget.targetInfo,
                     engine: widget.engine,
                     phase: _latestPhase,
@@ -262,7 +251,7 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // 7. Recent Probes Audit Stream
+                  // 7. Recent Pings Log
                   _RecentAuditLog(samples: samples, accentColor: accent),
                 ],
               ),
@@ -283,7 +272,7 @@ class _HeroBanner extends StatelessWidget {
     required this.isProbing,
     required this.liveMonitor,
     required this.onToggleLive,
-    required this.onRunDeepProbe,
+    required this.onPingNow,
   });
 
   final ItemProfileInfo targetInfo;
@@ -293,7 +282,7 @@ class _HeroBanner extends StatelessWidget {
   final bool isProbing;
   final bool liveMonitor;
   final ValueChanged<bool> onToggleLive;
-  final VoidCallback onRunDeepProbe;
+  final VoidCallback onPingNow;
 
   String _getDisplayTag() {
     if (targetInfo.tag != null && targetInfo.tag!.isNotEmpty) {
@@ -310,25 +299,26 @@ class _HeroBanner extends StatelessWidget {
 
   String _getHumanStatusText() {
     if (currentHit.status == HitStatus.checking) {
-      return 'PROBING TELEMETRY...';
+      return 'Pinging...';
     }
     if (currentHit.status == HitStatus.ok) {
-      return 'REACHABLE · ${currentHit.ms ?? 0}ms';
+      final ms = currentHit.ms;
+      return ms != null && ms > 0 ? 'Online · ${ms}ms' : 'Online';
     }
     if (currentHit.status == HitStatus.timeout) {
-      return 'TIMEOUT · PACKET DROP';
+      return 'Timed Out';
     }
     if (currentHit.status == HitStatus.idle) {
-      return 'IDLE · PENDING CHECK';
+      return 'Not Tested';
     }
     final detail = currentHit.detail ?? '';
-    if (detail.contains('rst')) return 'BLOCKED · TCP RESET (RST)';
-    if (detail.contains('tls') || detail.contains('hs')) return 'BLOCKED · TLS SNI FILTER';
-    if (detail.contains('nx')) return 'FAILED · NXDOMAIN';
+    if (detail.contains('rst')) return 'Connection Reset';
+    if (detail.contains('tls') || detail.contains('hs')) return 'SSL / TLS Error';
+    if (detail.contains('nx')) return 'DNS Failed';
     if (detail.startsWith('10.10.34.') || detail == '185.88.153.235') {
-      return 'POISONED · GOV SINKHOLE ($detail)';
+      return 'Blocked (Fake DNS)';
     }
-    return 'FAILED · $detail';
+    return detail.isNotEmpty ? 'Failed ($detail)' : 'Offline';
   }
 
   @override
@@ -359,10 +349,10 @@ class _HeroBanner extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Monogram / Tag Badge
+              // Monogram Badge
               Container(
-                width: 54,
-                height: 54,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -392,7 +382,7 @@ class _HeroBanner extends StatelessWidget {
               ),
               const SizedBox(width: 14),
 
-              // Title, Subtitle, and Type Tag
+              // Title and Subtitle
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -417,25 +407,6 @@ class _HeroBanner extends StatelessWidget {
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // Metadata Chips Row
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-              if (targetInfo.networkType != null)
-                _ChipPill(
-                  label: targetInfo.networkType!,
-                  color: const Color(0xFF8B5CF6),
-                ),
-              if (targetInfo.provider != null)
-                _ChipPill(
-                  label: targetInfo.provider!,
-                  color: const Color(0xFF06B6D4),
-                ),
             ],
           ),
           const SizedBox(height: 14),
@@ -474,7 +445,7 @@ class _HeroBanner extends StatelessWidget {
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: isProbing ? null : onRunDeepProbe,
+                  onPressed: isProbing ? null : onPingNow,
                   icon: isProbing
                       ? const SizedBox(
                           width: 16,
@@ -484,9 +455,9 @@ class _HeroBanner extends StatelessWidget {
                             color: kInk,
                           ),
                         )
-                      : const Icon(Icons.bolt, size: 18),
+                      : const Icon(Icons.refresh_rounded, size: 18),
                   label: Text(
-                    isProbing ? 'Probing...' : 'Run Deep Diagnostics',
+                    isProbing ? 'Pinging...' : 'Ping Now',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -541,52 +512,16 @@ class _HeroBanner extends StatelessWidget {
   }
 }
 
-class _ChipPill extends StatelessWidget {
-  const _ChipPill({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: color,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
-      ),
-    );
-  }
-}
-
-class _ClarificationCard extends StatelessWidget {
-  const _ClarificationCard({
-    required this.targetInfo,
-    required this.currentHit,
-    required this.metrics,
-    required this.accentColor,
-  });
+class _AboutCard extends StatelessWidget {
+  const _AboutCard({required this.targetInfo});
 
   final ItemProfileInfo targetInfo;
-  final Hit currentHit;
-  final ItemMetrics metrics;
-  final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
     final whatItTests = targetInfo.whatItTests ??
-        'Continuously probes network reachability and response latency to this destination.';
-    final whyItMatters = targetInfo.whyItMatters ??
-        'Verifies whether this network component is reachable and operating without firewall interference.';
+        'Tests ping and response time to ${targetInfo.title}.';
+    final whyItMatters = targetInfo.whyItMatters;
 
     return Container(
       decoration: BoxDecoration(
@@ -601,13 +536,13 @@ class _ClarificationCard extends StatelessWidget {
           Row(
             children: [
               const Icon(
-                Icons.help_outline_rounded,
+                Icons.info_outline_rounded,
                 color: Color(0xFF06B6D4),
                 size: 18,
               ),
               const SizedBox(width: 8),
               Text(
-                'ABOUT THIS TEST & NETWORK ROLE',
+                'ABOUT THIS ITEM',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       color: kPaper,
                       fontWeight: FontWeight.w600,
@@ -616,110 +551,28 @@ class _ClarificationCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-
-          // What it tests section
-          _ClarificationSection(
-            title: 'What does this probe check?',
-            content: whatItTests,
-            icon: Icons.search_rounded,
-            iconColor: const Color(0xFF06B6D4),
+          const SizedBox(height: 10),
+          Text(
+            whatItTests,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: kPaper.withValues(alpha: 0.9),
+                  fontSize: 12,
+                  height: 1.4,
+                ),
           ),
-          const SizedBox(height: 12),
-
-          // Why it matters section
-          _ClarificationSection(
-            title: 'Why is this important for your network?',
-            content: whyItMatters,
-            icon: Icons.lightbulb_outline_rounded,
-            iconColor: const Color(0xFFF59E0B),
-          ),
-
-          // Optional extra explanation
-          if (targetInfo.explanation != null &&
-              targetInfo.explanation!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0x14FFFFFF),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0x1EFFFFFF)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.info_outline_rounded,
-                    color: Color(0xFF8B5CF6),
-                    size: 16,
+          if (whyItMatters != null && whyItMatters.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              whyItMatters,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: kMute,
+                    fontSize: 11.5,
+                    height: 1.35,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      targetInfo.explanation!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: kPaper.withValues(alpha: 0.85),
-                            fontSize: 11,
-                            height: 1.35,
-                          ),
-                    ),
-                  ),
-                ],
-              ),
             ),
           ],
         ],
       ),
-    );
-  }
-}
-
-class _ClarificationSection extends StatelessWidget {
-  const _ClarificationSection({
-    required this.title,
-    required this.content,
-    required this.icon,
-    required this.iconColor,
-  });
-
-  final String title;
-  final String content;
-  final IconData icon;
-  final Color iconColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 14, color: iconColor),
-            const SizedBox(width: 6),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: kPaper,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 11.5,
-                  ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Padding(
-          padding: const EdgeInsets.only(left: 20),
-          child: Text(
-            content,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: kMute,
-                  fontSize: 11.5,
-                  height: 1.35,
-                ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -817,16 +670,16 @@ class _KpiMetricGrid extends StatelessWidget {
           childAspectRatio: isWide ? 1.4 : 1.35,
           children: [
             _KpiCard(
-              label: 'AVG LATENCY',
+              label: 'AVERAGE PING',
               value: avgStr,
               subtext: metrics.minMs > 0
                   ? 'Min ${metrics.minMs}ms · Max ${metrics.maxMs}ms'
-                  : 'Based on recent samples',
+                  : 'Recent average',
               icon: Icons.timer_outlined,
               accentColor: accentColor,
             ),
             _KpiCard(
-              label: 'REACHABILITY',
+              label: 'SUCCESS RATE',
               value: uptimeStr,
               subtext: '${metrics.okCount} of ${metrics.totalChecks} successful',
               icon: Icons.verified_outlined,
@@ -837,19 +690,19 @@ class _KpiMetricGrid extends StatelessWidget {
                       : kFail),
             ),
             _KpiCard(
-              label: 'JITTER VARIANCE',
+              label: 'STABILITY',
               value: jitterStr,
-              subtext: metrics.jitterMs < 10 ? 'Stable Connection' : 'High Deviation',
+              subtext: metrics.jitterMs < 10 ? 'Stable' : 'Varying',
               icon: Icons.graphic_eq_rounded,
               accentColor: const Color(0xFF8B5CF6),
             ),
             _KpiCard(
-              label: 'CENSORSHIP STATE',
-              value: metrics.isClean ? 'Clean' : 'Anomaly',
+              label: 'STATUS',
+              value: metrics.isClean ? 'Working' : 'Error',
               subtext: metrics.filterStatus,
               icon: metrics.isClean
-                  ? Icons.shield_outlined
-                  : Icons.gpp_bad_outlined,
+                  ? Icons.check_circle_outline_rounded
+                  : Icons.error_outline_rounded,
               accentColor: metrics.isClean ? const Color(0xFF10B981) : kFail,
             ),
           ],
@@ -932,8 +785,8 @@ class _KpiCard extends StatelessWidget {
   }
 }
 
-class _TechnicalSpecsCard extends StatelessWidget {
-  const _TechnicalSpecsCard({
+class _DetailsCard extends StatelessWidget {
+  const _DetailsCard({
     required this.targetInfo,
     required this.engine,
     required this.phase,
@@ -958,7 +811,7 @@ class _TechnicalSpecsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'TECHNICAL SPECIFICATIONS & DIAGNOSTICS',
+            'DETAILS',
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: kPaper,
                   fontWeight: FontWeight.w600,
@@ -966,35 +819,22 @@ class _TechnicalSpecsCard extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: 12),
-          _SpecRow(label: 'Target ID / Host', value: targetInfo.id),
-          _SpecRow(
-            label: 'Category',
-            value: targetInfo.categoryLabel,
-          ),
+          _SpecRow(label: 'Address / Host', value: targetInfo.id),
+          _SpecRow(label: 'Type', value: targetInfo.categoryLabel),
           if (targetInfo.provider != null)
-            _SpecRow(
-              label: 'Provider / Service',
-              value: targetInfo.provider!,
-            ),
+            _SpecRow(label: 'Provider', value: targetInfo.provider!),
           _SpecRow(
-            label: 'Port & Protocol',
-            value: '${targetInfo.port} (${targetInfo.category == ItemCategory.dns ? "UDP/DNS" : "TCP/TLS"})',
+            label: 'Port',
+            value: '${targetInfo.port} (${targetInfo.category == ItemCategory.dns ? "UDP" : "TCP"})',
           ),
-          _SpecRow(
-            label: 'SNI Host Indication',
-            value: targetInfo.sni ?? targetInfo.hostOrIp ?? targetInfo.title,
-          ),
-          _SpecRow(
-            label: 'Bound Network NIC',
-            value: engine.nic.label,
-          ),
+          _SpecRow(label: 'Network', value: engine.nic.label),
           if (phase?.resolvedIps != null && phase!.resolvedIps!.isNotEmpty)
             _SpecRow(
-              label: 'Resolved Endpoint(s)',
+              label: 'Resolved IP',
               value: phase!.resolvedIps!.join(', '),
             ),
           _SpecRow(
-            label: 'Heuristic Classification',
+            label: 'Result',
             value: metrics.filterStatus,
             isWarning: !metrics.isClean,
           ),
@@ -1023,7 +863,7 @@ class _SpecRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 140,
+            width: 130,
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -1072,7 +912,7 @@ class _RecentAuditLog extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'RECENT PROBES AUDIT',
+                'RECENT PINGS',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       color: kPaper,
                       fontWeight: FontWeight.w600,
@@ -1080,7 +920,7 @@ class _RecentAuditLog extends StatelessWidget {
                     ),
               ),
               Text(
-                'Latest ${recent.length}',
+                'Last ${recent.length}',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: kMute,
                       fontSize: 10,
@@ -1094,7 +934,7 @@ class _RecentAuditLog extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               child: Center(
                 child: Text(
-                  'No historical samples logged yet',
+                  'No pings recorded yet',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: kMute,
                       ),
@@ -1123,6 +963,7 @@ class _AuditItemRow extends StatelessWidget {
         '${sample.timestamp.hour.toString().padLeft(2, '0')}:${sample.timestamp.minute.toString().padLeft(2, '0')}:${sample.timestamp.second.toString().padLeft(2, '0')}';
     final isOk = sample.status == HitStatus.ok;
     final statusColor = isOk ? accentColor : (sample.status == HitStatus.timeout ? const Color(0xFFF59E0B) : kFail);
+    final statusLabel = isOk ? 'OK' : (sample.status == HitStatus.timeout ? 'TIMEOUT' : 'FAIL');
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1143,7 +984,7 @@ class _AuditItemRow extends StatelessWidget {
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
-              sample.status.name.toUpperCase(),
+              statusLabel,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: statusColor,
                     fontWeight: FontWeight.w700,
@@ -1156,7 +997,7 @@ class _AuditItemRow extends StatelessWidget {
             child: Text(
               sample.detail != null && sample.detail!.isNotEmpty
                   ? sample.detail!
-                  : (isOk ? '200 OK' : '-'),
+                  : (isOk ? 'Success' : 'Error'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(

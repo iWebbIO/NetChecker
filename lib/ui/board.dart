@@ -42,19 +42,16 @@ class ProbeBoard extends StatelessWidget {
                       ItemProfileInfo(
                         id: r.address,
                         category: ItemCategory.dns,
-                        title: '${r.name} DNS (${r.address})',
-                        subtitle: '${r.organization ?? r.name} · ${r.location}',
+                        title: r.name,
+                        subtitle: 'DNS Server · ${r.address}',
                         tag: r.short,
                         hostOrIp: r.address,
                         port: 53,
                         provider: r.organization ?? r.name,
-                        networkType: r.isIranian
-                            ? 'Iranian Sanction-Bypass / Domestic DNS'
-                            : 'Global Anycast Public Resolver',
                         whatItTests:
-                            'Sends standard UDP DNS queries to ${r.name} (${r.address}) on port 53 to test resolver reachability and query response latency.',
+                            'Tests DNS response time by sending a query to ${r.name} (${r.address}).',
                         whyItMatters:
-                            'A responsive, unhindered DNS resolver is crucial for fast web browsing and reliable VPN tunneling. If this times out or shows high latency, your ISP or network firewall may be throttling or filtering port 53 UDP traffic.',
+                            'A fast DNS server makes websites load faster and connections more reliable.',
                         explanation: r.description,
                       ),
                     ),
@@ -83,45 +80,39 @@ class ProbeBoard extends StatelessWidget {
                           info = const ItemProfileInfo(
                             id: 'v4',
                             category: ItemCategory.proto,
-                            title: 'IPv4 Global Reachability',
-                            subtitle:
-                                'Direct TCP SYN to 1.1.1.1:443 (Cloudflare Anycast)',
+                            title: 'IPv4 Connection',
+                            subtitle: 'Pings 1.1.1.1 on port 443',
                             tag: 'v4',
-                            networkType: 'Core Internet Protocol (IPv4)',
                             whatItTests:
-                                'Tests whether standard IPv4 TCP packets can route out of your current network interface to global Anycast internet servers (1.1.1.1:443).',
+                                'Checks if your standard IPv4 internet connection is working.',
                             whyItMatters:
-                                'The vast majority of internet services run on IPv4. If this check fails, your base internet connection or network interface is disconnected.',
+                                'Most internet services use IPv4. If this fails, you may be disconnected.',
                           );
                           break;
                         case 'v6':
                           info = const ItemProfileInfo(
                             id: 'v6',
                             category: ItemCategory.proto,
-                            title: 'IPv6 Dual-Stack Reachability',
-                            subtitle:
-                                'Direct TCP SYN to 2606:4700:4700::1111:443 (IPv6)',
+                            title: 'IPv6 Connection',
+                            subtitle: 'Pings IPv6 2606:4700:4700::1111',
                             tag: 'v6',
-                            networkType: 'Next-Generation Protocol (IPv6)',
                             whatItTests:
-                                'Tests whether your ISP or VPN tunnel provides operational IPv6 dual-stack connectivity to 2606:4700:4700::1111:443.',
+                                'Checks if your network has working IPv6 support.',
                             whyItMatters:
-                                'IPv6 traffic often bypasses legacy IPv4 firewall filters, but requires IPv6 support from your ISP or VPN provider. If your network is IPv4-only, this will show timeout or unreachable.',
+                                'IPv6 is newer and sometimes avoids restrictions, but requires network support.',
                           );
                           break;
                         case 'https':
                           info = const ItemProfileInfo(
                             id: 'https',
                             category: ItemCategory.proto,
-                            title: 'Direct HTTPS / TLS Protocol Check',
-                            subtitle:
-                                'Full TLS 1.3 Handshake & HTTP HEAD to cloudflare.com',
+                            title: 'HTTPS Connection',
+                            subtitle: 'Tests SSL connection to cloudflare.com',
                             tag: 'tls',
-                            networkType: 'Encrypted Web Protocol',
                             whatItTests:
-                                'Establishes a complete TLS 1.3 cryptographic handshake followed by an HTTP HEAD response verification.',
+                                'Checks if secure HTTPS web connections work properly.',
                             whyItMatters:
-                                'Confirms that secure web traffic can be negotiated cleanly without SSL/TLS protocol tampering or man-in-the-middle degradation.',
+                                'Ensures encrypted website traffic can connect without errors.',
                           );
                           break;
                         case 'sni':
@@ -129,15 +120,13 @@ class ProbeBoard extends StatelessWidget {
                           info = const ItemProfileInfo(
                             id: 'sni',
                             category: ItemCategory.proto,
-                            title: 'SNI Firewall Filtering Probe',
-                            subtitle:
-                                'TLS ClientHello with SNI: youtube.com sent to 1.1.1.1',
+                            title: 'Domain Filtering Check',
+                            subtitle: 'Tests connection with youtube.com domain',
                             tag: 'sni',
-                            networkType: 'DPI Censorship Detection',
                             whatItTests:
-                                'Connects to Cloudflare Anycast (1.1.1.1) but sends a Server Name Indication (SNI) header for "youtube.com".',
+                                'Checks if your network blocks websites based on their domain name.',
                             whyItMatters:
-                                'Deep Packet Inspection (DPI) firewalls monitor unencrypted SNI domain headers. If your ISP blocks YouTube via SNI filtering, this probe triggers and exposes the RST packet injection.',
+                                'Helps identify if website blocking is happening at the network level.',
                           );
                           break;
                       }
@@ -158,18 +147,17 @@ class ProbeBoard extends StatelessWidget {
                       ItemProfileInfo(
                         id: e.ip,
                         category: ItemCategory.edge,
-                        title: 'Cloudflare CDN Anycast IP (${e.short})',
-                        subtitle: 'Anycast IP: ${e.ip} · SNI: ${e.sni}',
+                        title: 'Cloudflare (${e.short})',
+                        subtitle: 'CDN Server · ${e.ip}',
                         tag: e.label,
                         hostOrIp: e.ip,
                         sni: e.sni,
                         port: 443,
-                        provider: 'Cloudflare Anycast Network',
-                        networkType: 'CDN Anycast Edge Subnet',
+                        provider: 'Cloudflare',
                         whatItTests:
-                            'Connects directly to Cloudflare CDN Anycast IP ${e.ip} on port 443 and performs a TLS handshake with SNI ${e.sni}.',
+                            'Tests response time to Cloudflare CDN server at ${e.ip}.',
                         whyItMatters:
-                            'Millions of websites, APIs, and VPN proxies rely on Cloudflare Anycast edge IP ranges. ISPs frequently throttle or blackhole specific Cloudflare subnets (like 104.16-104.21). This test shows which edge IPs are fast and clean.',
+                            'Cloudflare servers power millions of websites and proxy connections.',
                       ),
                     ),
                     onCopy: '${e.ip} ${engine.edgeHits[e.ip]?.readout}',
@@ -195,21 +183,16 @@ class ProbeBoard extends StatelessWidget {
                       ItemProfileInfo(
                         id: r.address,
                         category: ItemCategory.hunt,
-                        title:
-                            '${r.name} — DNS Poisoning Check for ${engine.settings.huntName}',
-                        subtitle:
-                            'Resolver: ${r.address} (${r.organization ?? r.name}) · Target: ${engine.settings.huntName}',
+                        title: '${r.name} · ${engine.settings.huntName}',
+                        subtitle: 'Checking ${engine.settings.huntName} on ${r.address}',
                         tag: r.short,
                         hostOrIp: r.address,
                         port: 53,
-                        provider: r.organization ?? r.name,
-                        networkType: 'DNS Poisoning & Censorship Detector',
+                        provider: r.name,
                         whatItTests:
-                            'Queries ${r.name} (${r.address}) for "${engine.settings.huntName}" and inspects the returned IP addresses to verify authenticity.',
+                            'Asks ${r.name} to find the address for ${engine.settings.huntName} to verify it returns the real website address.',
                         whyItMatters:
-                            'When firewalls block websites, they often poison DNS responses to redirect you to an official block page (such as 10.10.34.34) or return NXDomain. This test exposes whether ${r.name} is giving you genuine IP addresses or hijacked censorship results.',
-                        explanation:
-                            'DNS poisoning occurs when an ISP or firewall intercepts DNS lookups and injects falsified IP records before the authentic server can answer.',
+                            'Checks whether your network is redirecting or tampering with DNS lookups for blocked websites.',
                       ),
                     ),
                     onCopy:
@@ -255,18 +238,16 @@ class ProbeBoard extends StatelessWidget {
                       ItemProfileInfo(
                         id: d.host,
                         category: ItemCategory.domain,
-                        title: '${d.short.toUpperCase()} (${d.host})',
-                        subtitle:
-                            'HTTPS Website Probe · https://${d.host}/',
+                        title: d.host,
+                        subtitle: 'https://${d.host}/',
                         tag: d.short,
                         hostOrIp: d.host,
                         sni: d.host,
                         port: 443,
-                        networkType: 'HTTPS Web Destination',
                         whatItTests:
-                            'Continuously checks DNS resolution, TCP socket connection to port 443, TLS certificate validation, and HTTP response codes for ${d.host}.',
+                            'Pings https://${d.host}/ to check if the website is online and how fast it responds.',
                         whyItMatters:
-                            'Tells you instantly whether ${d.host} is reachable through your current network or VPN tunnel, and isolates whether any failure is due to DNS poisoning, TCP reset injection, SNI filtering, or server timeout.',
+                            'Tells you if you can visit ${d.host} on your current connection.',
                       ),
                     ),
                     onCopy: '${d.host} ${hit.readout} ${hit.detail ?? ''}',

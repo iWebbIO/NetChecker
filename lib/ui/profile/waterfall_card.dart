@@ -48,7 +48,7 @@ class ConnectionWaterfallCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'CONNECTION WATERFALL & PHASES',
+                'SPEED BREAKDOWN',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       color: kPaper,
                       fontWeight: FontWeight.w600,
@@ -80,7 +80,7 @@ class ConnectionWaterfallCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Multi-Phase Telemetry Unmeasured',
+                          'No speed breakdown yet',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 color: kPaper,
                                 fontWeight: FontWeight.w500,
@@ -88,7 +88,7 @@ class ConnectionWaterfallCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Run a deep diagnostic to dissect DNS, TCP SYN, TLS SNI, and HTTP phases.',
+                          'Tap "Ping Now" above to measure DNS, connection, and SSL speed.',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: kMute,
                                 fontSize: 11,
@@ -109,41 +109,41 @@ class ConnectionWaterfallCard extends StatelessWidget {
             if (phase!.dnsMs != null)
               _WaterfallStepRow(
                 index: '1',
-                name: 'DNS Resolution',
+                name: 'DNS Lookup',
                 ms: phase!.dnsMs!,
                 color: const Color(0xFF06B6D4),
                 detail: phase!.resolvedIps != null && phase!.resolvedIps!.isNotEmpty
-                    ? 'Resolved  IP(s): '
-                    : 'Queried system resolver',
+                    ? 'Found IP: ${phase!.resolvedIps!.join(", ")}'
+                    : 'Looked up domain',
                 isAlert: phase!.anomaly != null && phase!.anomaly!.contains('DNS'),
               ),
             if (phase!.tcpMs != null)
               _WaterfallStepRow(
                 index: '2',
-                name: 'TCP Socket Handshake',
+                name: 'Connecting (TCP)',
                 ms: phase!.tcpMs!,
                 color: const Color(0xFF10B981),
-                detail: 'SYN/ACK on Port ',
+                detail: 'Connected to port ${targetInfo.port}',
                 isAlert: phase!.anomaly != null && phase!.anomaly!.contains('TCP'),
               ),
             if (phase!.tlsMs != null)
               _WaterfallStepRow(
                 index: '3',
-                name: 'TLS Handshake & SNI',
+                name: 'Secure Handshake (SSL)',
                 ms: phase!.tlsMs!,
                 color: const Color(0xFF8B5CF6),
-                detail: 'SNI: ',
+                detail: 'SSL encryption verified',
                 isAlert: phase!.anomaly != null && phase!.anomaly!.contains('TLS'),
               ),
             if (phase!.httpMs != null || phase!.httpStatusCode != null)
               _WaterfallStepRow(
                 index: '4',
-                name: 'HTTP HEAD / First Byte',
+                name: 'Response (HTTP)',
                 ms: phase!.httpMs ?? 0,
                 color: const Color(0xFFF59E0B),
                 detail: phase!.httpStatusCode != null
-                    ? 'Status '
-                    : 'Completed reachability check',
+                    ? 'HTTP Status ${phase!.httpStatusCode}'
+                    : 'Response received',
                 isAlert: phase!.httpStatusCode != null && phase!.httpStatusCode! >= 400,
               ),
           ],

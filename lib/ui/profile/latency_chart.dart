@@ -68,7 +68,7 @@ class _ItemLatencyChartState extends State<ItemLatencyChart> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'LATENCY TIMELINE',
+                    'PING HISTORY',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
                           color: kPaper,
                           fontWeight: FontWeight.w600,

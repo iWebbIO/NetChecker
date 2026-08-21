@@ -31,7 +31,7 @@ void main() {
       expect(metrics.avgMs, 60.0);
       expect(metrics.jitterMs, 15.0); // (|70-50| + |60-70|) / 2 = (20 + 10) / 2 = 15
       expect(metrics.isClean, false);
-      expect(metrics.filterStatus, contains('TCP Reset'));
+      expect(metrics.filterStatus, contains('Connection reset'));
     });
 
     test('detects DNS poisoning anomaly', () {
@@ -91,13 +91,13 @@ void main() {
 
       // Verify we are on ItemProfilePage
       expect(find.byType(ItemProfilePage), findsOneWidget);
-      expect(find.text('HTTPS DOMAIN'), findsWidgets);
+      expect(find.text('Website'), findsWidgets);
       expect(find.text('youtube.com'), findsWidgets);
-      expect(find.text('LATENCY TIMELINE'), findsOneWidget);
-      expect(find.text('CONNECTION WATERFALL & PHASES'), findsOneWidget);
-      expect(find.text('TECHNICAL SPECIFICATIONS & DIAGNOSTICS'), findsOneWidget);
-      expect(find.text('RECENT PROBES AUDIT'), findsOneWidget);
-      expect(find.text('Run Deep Diagnostics'), findsOneWidget);
+      expect(find.text('PING HISTORY'), findsOneWidget);
+      expect(find.text('SPEED BREAKDOWN'), findsOneWidget);
+      expect(find.text('DETAILS'), findsOneWidget);
+      expect(find.text('RECENT PINGS'), findsOneWidget);
+      expect(find.text('Ping Now'), findsOneWidget);
       expect(find.text('Auto-Ping'), findsOneWidget);
 
       // Verify charts & cards exist
@@ -128,9 +128,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.byType(ItemProfilePage), findsOneWidget);
-      expect(find.text('DNS RESOLVER SPEED'), findsWidgets);
-      expect(find.textContaining('Cloudflare DNS'), findsOneWidget);
-      expect(find.text('ABOUT THIS TEST & NETWORK ROLE'), findsOneWidget);
+      expect(find.text('DNS Server'), findsWidgets);
+      expect(find.text('Cloudflare'), findsOneWidget);
+      expect(find.text('ABOUT THIS ITEM'), findsOneWidget);
     });
 
     testWidgets('Tapping edge target and interacting with chart range selector', (tester) async {
@@ -150,8 +150,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.byType(ItemProfilePage), findsOneWidget);
-      expect(find.text('EDGE CDN ANYCAST IP'), findsWidgets);
-      expect(find.text('ABOUT THIS TEST & NETWORK ROLE'), findsOneWidget);
+      expect(find.text('CDN Server'), findsWidgets);
+      expect(find.text('ABOUT THIS ITEM'), findsOneWidget);
 
       // Test chart range filter buttons
       expect(find.text('15'), findsOneWidget);
@@ -187,11 +187,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.byType(ItemProfilePage), findsOneWidget);
-      expect(find.text('CORE NETWORK PROTOCOL'), findsWidgets);
-      expect(find.text('ABOUT THIS TEST & NETWORK ROLE'), findsOneWidget);
+      expect(find.text('Network Test'), findsWidgets);
+      expect(find.text('ABOUT THIS ITEM'), findsOneWidget);
     });
 
-    testWidgets('Tapping Hunt item opens crystal-clear DNS Poisoning profile', (tester) async {
+    testWidgets('Tapping Hunt item opens DNS check profile', (tester) async {
       SharedPreferences.setMockInitialValues({});
       final engine = ProbeEngine();
       await engine.start(loops: false, loadNics: false);
@@ -209,10 +209,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.byType(ItemProfilePage), findsOneWidget);
-      expect(find.text('DNS POISONING DETECTOR'), findsWidgets);
+      expect(find.text('DNS Check'), findsWidgets);
       expect(find.textContaining('OpenDNS'), findsWidgets);
-      expect(find.textContaining('DNS Poisoning Check'), findsOneWidget);
-      expect(find.text('ABOUT THIS TEST & NETWORK ROLE'), findsOneWidget);
+      expect(find.text('ABOUT THIS ITEM'), findsOneWidget);
     });
   });
 }
