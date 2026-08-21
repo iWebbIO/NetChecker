@@ -214,7 +214,14 @@ class ProbeEngine extends ChangeNotifier {
       if (_disposed) return;
       if (epoch == _epoch) {
         dnsHits[r.address] = hit;
-        _recordSample(r.address, hit);
+        _recordSample(
+          r.address,
+          hit,
+          phase: PhaseBreakdown(
+            dnsMs: hit.ms,
+            anomaly: hit.status == HitStatus.ok ? null : hit.detail,
+          ),
+        );
         liveDns = null;
         notifyListeners();
         i++;
@@ -240,7 +247,14 @@ class ProbeEngine extends ChangeNotifier {
       if (_disposed) return;
       if (epoch == _epoch) {
         protoHits[proto.id] = protoHit;
-        _recordSample(proto.id, protoHit);
+        _recordSample(
+          proto.id,
+          protoHit,
+          phase: PhaseBreakdown(
+            tcpMs: protoHit.ms,
+            anomaly: protoHit.status == HitStatus.ok ? null : protoHit.detail,
+          ),
+        );
         liveProto = null;
         protoI++;
         notifyListeners();
@@ -261,7 +275,14 @@ class ProbeEngine extends ChangeNotifier {
       if (_disposed) return;
       if (epoch == _epoch) {
         edgeHits[edge.ip] = edgeHit;
-        _recordSample(edge.ip, edgeHit);
+        _recordSample(
+          edge.ip,
+          edgeHit,
+          phase: PhaseBreakdown(
+            tlsMs: edgeHit.ms,
+            anomaly: edgeHit.status == HitStatus.ok ? null : edgeHit.detail,
+          ),
+        );
         liveEdge = null;
         edgeI++;
         notifyListeners();
@@ -282,7 +303,20 @@ class ProbeEngine extends ChangeNotifier {
       if (_disposed) return;
       if (epoch == _epoch) {
         huntHits[hunter.address] = huntHit;
-        _recordSample(hunter.address, huntHit);
+        _recordSample(
+          hunter.address,
+          huntHit,
+          phase: PhaseBreakdown(
+            dnsMs: huntHit.ms,
+            resolvedIps: huntHit.detail != null ? [huntHit.detail!] : null,
+            anomaly: (huntHit.detail != null &&
+                    (huntHit.detail!.startsWith('10.10.34.') ||
+                        huntHit.detail == '185.88.153.235' ||
+                        huntHit.detail == '185.88.153.236'))
+                ? 'DNS Poisoning (${huntHit.detail})'
+                : null,
+          ),
+        );
         liveHunt = null;
         huntI++;
         notifyListeners();

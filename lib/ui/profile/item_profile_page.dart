@@ -15,21 +15,25 @@ class ItemProfilePage extends StatefulWidget {
     super.key,
     required this.engine,
     required this.targetInfo,
+    this.autoProbe = false,
   });
 
   final ProbeEngine engine;
   final ItemProfileInfo targetInfo;
+  final bool autoProbe;
 
   static Future<void> open(
     BuildContext context, {
     required ProbeEngine engine,
     required ItemProfileInfo targetInfo,
+    bool autoProbe = false,
   }) {
     return Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (ctx) => ItemProfilePage(
           engine: engine,
           targetInfo: targetInfo,
+          autoProbe: autoProbe,
         ),
       ),
     );
@@ -50,6 +54,13 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
   void initState() {
     super.initState();
     _loadInitialPhase();
+    if (widget.autoProbe) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _triggerPing(silent: false);
+        }
+      });
+    }
   }
 
   void _loadInitialPhase() {
@@ -58,6 +69,18 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
       if (s.phase != null) {
         _latestPhase = s.phase;
         break;
+      }
+    }
+    if (_latestPhase == null) {
+      final current = _getCurrentHit();
+      if (current.status == HitStatus.ok && current.ms != null) {
+        if (widget.targetInfo.category == ItemCategory.dns) {
+          _latestPhase = PhaseBreakdown(dnsMs: current.ms);
+        } else if (widget.targetInfo.category == ItemCategory.edge) {
+          _latestPhase = PhaseBreakdown(tlsMs: current.ms);
+        } else if (widget.targetInfo.category == ItemCategory.proto) {
+          _latestPhase = PhaseBreakdown(tcpMs: current.ms);
+        }
       }
     }
   }
@@ -128,7 +151,7 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
       case HitStatus.checking:
         return const Color(0xFF06B6D4);
       case HitStatus.idle:
-        return kMute;
+        return const Color(0xFF06B6D4);
     }
   }
 
@@ -372,8 +395,13 @@ class _HeroBanner extends StatelessWidget {
   final VoidCallback onTraceRoute;
 
   String _getDisplayTag() {
+    if (targetInfo.category == ItemCategory.edge) {
+      return 'CDN';
+    }
     if (targetInfo.tag != null && targetInfo.tag!.isNotEmpty) {
-      return targetInfo.tag!;
+      if (targetInfo.tag!.length <= 4) {
+        return targetInfo.tag!;
+      }
     }
     final clean = targetInfo.title.replaceAll(RegExp(r'^(https?://|www\.)'), '');
     if (clean.length <= 3) return clean.toUpperCase();
@@ -396,7 +424,7 @@ class _HeroBanner extends StatelessWidget {
       return 'Timed Out';
     }
     if (currentHit.status == HitStatus.idle) {
-      return 'Not Tested';
+      return 'Checking...';
     }
     final detail = currentHit.detail ?? '';
     if (detail.contains('rst')) return 'Connection Reset';
@@ -461,7 +489,7 @@ class _HeroBanner extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: 'Space Mono',
                       fontWeight: FontWeight.w700,
-                      fontSize: tag.length > 2 ? 14 : 17,
+                      fontSize: tag.length > 3 ? 11 : (tag.length > 2 ? 14 : 17),
                       color: accentColor,
                     ),
                   ),
