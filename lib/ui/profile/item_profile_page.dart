@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../probe/engine.dart';
 import '../../probe/models.dart';
 import '../../theme.dart';
+import '../keyboard/shortcuts.dart';
 import 'latency_chart.dart';
 import 'latency_histogram.dart';
 import 'route_map_page.dart';
@@ -49,6 +50,7 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
   int _chartTab = 0;
   Timer? _liveTimer;
   PhaseBreakdown? _latestPhase;
+  final FocusNode _profileFocusNode = FocusNode(debugLabel: 'ItemProfilePage');
 
   @override
   void initState() {
@@ -157,15 +159,17 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
 
   Future<void> _copyReport(ItemMetrics metrics, List<ProbeSample> samples) async {
     final buf = StringBuffer();
-    buf.writeln('=== NetChecker Report ===');
-    buf.writeln('Target: ${widget.targetInfo.title} (${widget.targetInfo.categoryLabel})');
-    buf.writeln('Address: ${widget.targetInfo.id}');
+    buf.writeln('Telemetry Report: ${widget.targetInfo.title}');
+    buf.writeln('Target: ${widget.targetInfo.hostOrIp ?? widget.targetInfo.id}');
+    buf.writeln('Category: ${widget.targetInfo.categoryLabel}');
     buf.writeln('Status: ${metrics.filterStatus}');
-    buf.writeln('Success Rate: ${metrics.uptimePercent.toStringAsFixed(0)}% (${metrics.okCount}/${metrics.totalChecks})');
-    buf.writeln('Ping: avg=${metrics.avgMs.toStringAsFixed(0)}ms min=${metrics.minMs}ms max=${metrics.maxMs}ms');
-    buf.writeln('Recent:');
-    for (final s in samples.reversed.take(8)) {
-      buf.writeln('  ${s.status.name.toUpperCase()} - ${s.ms ?? "-"}ms ${s.detail ?? ""}');
+    buf.writeln('Avg Latency: ${metrics.avgMs > 0 ? "${metrics.avgMs.toStringAsFixed(1)}ms" : "N/A"}');
+    buf.writeln('Success Rate: ${metrics.uptimePercent.round()}%');
+    buf.writeln('Jitter (StdDev): ±${metrics.stdDevMs.toStringAsFixed(1)}ms');
+    buf.writeln('Loss: ${metrics.lossPercent.round()}%');
+    buf.writeln('Total Samples: ${metrics.totalChecks}');
+    if (widget.targetInfo.explanation != null) {
+      buf.writeln('Description: ${widget.targetInfo.explanation}');
     }
     await Clipboard.setData(ClipboardData(text: buf.toString()));
     if (mounted) {
@@ -188,92 +192,166 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
         );
         final accent = _getStatusAccent(currentHit.status, metrics.isClean);
 
-        return Scaffold(
-          backgroundColor: kInk,
-          appBar: AppBar(
-            backgroundColor: kInk,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_rounded, size: 20),
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFF18181B),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: kLine),
-              ),
-              child: Text(
-                widget.targetInfo.categoryLabel,
-                style: const TextStyle(
-                  fontFamily: 'Space Mono',
-                  color: kPaper,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 10,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-            actions: [
-              IconButton(
-                tooltip: 'Trace Route',
-                icon: const Icon(Icons.alt_route_rounded, size: 18),
-                style: IconButton.styleFrom(
-                  backgroundColor: const Color(0xFF18181B),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                    side: const BorderSide(color: kLine),
-                  ),
-                  padding: const EdgeInsets.all(8),
-                ),
-                onPressed: () => RouteMapPage.open(
-                  context,
-                  target: widget.targetInfo.hostOrIp ?? widget.targetInfo.id,
-                  title: widget.targetInfo.title,
-                ),
-              ),
-              const SizedBox(width: 4),
-              IconButton(
-                tooltip: 'Reset Stats',
-                icon: const Icon(Icons.refresh_rounded, size: 18),
-                style: IconButton.styleFrom(
-                  backgroundColor: const Color(0xFF18181B),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                    side: const BorderSide(color: kLine),
-                  ),
-                  padding: const EdgeInsets.all(8),
-                ),
-                onPressed: () {
-                  widget.engine.resetStats(widget.targetInfo.id);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Statistics reset for this item')),
-                  );
+        return Shortcuts(
+          shortcuts: <ShortcutActivator, Intent>{
+            const SingleActivator(LogicalKeyboardKey.escape): const EscapeIntent(),
+            const SingleActivator(LogicalKeyboardKey.backspace): const EscapeIntent(),
+            const SingleActivator(LogicalKeyboardKey.gameButtonB): const EscapeIntent(),
+            const SingleActivator(LogicalKeyboardKey.goBack): const EscapeIntent(),
+            const SingleActivator(LogicalKeyboardKey.keyR): const PingNowIntent(),
+            const SingleActivator(LogicalKeyboardKey.enter): const PingNowIntent(),
+            const SingleActivator(LogicalKeyboardKey.gameButtonA): const PingNowIntent(),
+            const SingleActivator(LogicalKeyboardKey.gameButtonX): const PingNowIntent(),
+            const SingleActivator(LogicalKeyboardKey.keyT): const TracerouteIntent(),
+            const SingleActivator(LogicalKeyboardKey.gameButtonY): const TracerouteIntent(),
+            const SingleActivator(LogicalKeyboardKey.keyA): const ToggleAutoIntent(),
+            const SingleActivator(LogicalKeyboardKey.keyC): const CopyReportIntent(),
+            const SingleActivator(LogicalKeyboardKey.digit1): const PrevTabIntent(),
+            const SingleActivator(LogicalKeyboardKey.bracketLeft): const PrevTabIntent(),
+            const SingleActivator(LogicalKeyboardKey.gameButtonLeft1): const PrevTabIntent(),
+            const SingleActivator(LogicalKeyboardKey.digit2): const NextTabIntent(),
+            const SingleActivator(LogicalKeyboardKey.bracketRight): const NextTabIntent(),
+            const SingleActivator(LogicalKeyboardKey.gameButtonRight1): const NextTabIntent(),
+          },
+          child: Actions(
+            actions: <Type, Action<Intent>>{
+              EscapeIntent: CallbackAction<EscapeIntent>(
+                onInvoke: (_) {
+                  Navigator.pop(context);
+                  return null;
                 },
               ),
-              const SizedBox(width: 4),
-              IconButton(
-                tooltip: 'Copy Report',
-                icon: const Icon(Icons.copy_rounded, size: 18),
-                style: IconButton.styleFrom(
-                  backgroundColor: const Color(0xFF18181B),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                    side: const BorderSide(color: kLine),
-                  ),
-                  padding: const EdgeInsets.all(8),
-                ),
-                onPressed: () => _copyReport(metrics, samples),
+              PingNowIntent: CallbackAction<PingNowIntent>(
+                onInvoke: (_) {
+                  _triggerPing();
+                  return null;
+                },
               ),
-              const SizedBox(width: 12),
-            ],
-            bottom: const PreferredSize(
-              preferredSize: Size.fromHeight(1),
-              child: Divider(height: 1, color: kLine),
-            ),
-          ),
+              TracerouteIntent: CallbackAction<TracerouteIntent>(
+                onInvoke: (_) {
+                  RouteMapPage.open(
+                    context,
+                    target: widget.targetInfo.hostOrIp ?? widget.targetInfo.id,
+                    title: widget.targetInfo.title,
+                  );
+                  return null;
+                },
+              ),
+              ToggleAutoIntent: CallbackAction<ToggleAutoIntent>(
+                onInvoke: (_) {
+                  _toggleLiveMonitor(!_liveMonitor);
+                  return null;
+                },
+              ),
+              CopyReportIntent: CallbackAction<CopyReportIntent>(
+                onInvoke: (_) {
+                  _copyReport(metrics, samples);
+                  return null;
+                },
+              ),
+              PrevTabIntent: CallbackAction<PrevTabIntent>(
+                onInvoke: (_) {
+                  setState(() => _chartTab = 0);
+                  return null;
+                },
+              ),
+              NextTabIntent: CallbackAction<NextTabIntent>(
+                onInvoke: (_) {
+                  setState(() => _chartTab = 1);
+                  return null;
+                },
+              ),
+            },
+            child: Focus(
+              focusNode: _profileFocusNode,
+              autofocus: true,
+              canRequestFocus: true,
+              child: Scaffold(
+                backgroundColor: kInk,
+                appBar: AppBar(
+                  backgroundColor: kInk,
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 0,
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded, size: 20),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  title: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF18181B),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: kLine),
+                    ),
+                    child: Text(
+                      widget.targetInfo.categoryLabel,
+                      style: const TextStyle(
+                        fontFamily: 'Space Mono',
+                        color: kPaper,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 10,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  actions: [
+                    IconButton(
+                      tooltip: 'Trace Route',
+                      icon: const Icon(Icons.alt_route_rounded, size: 18),
+                      style: IconButton.styleFrom(
+                        backgroundColor: const Color(0xFF18181B),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          side: const BorderSide(color: kLine),
+                        ),
+                        padding: const EdgeInsets.all(8),
+                      ),
+                      onPressed: () => RouteMapPage.open(
+                        context,
+                        target: widget.targetInfo.hostOrIp ?? widget.targetInfo.id,
+                        title: widget.targetInfo.title,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      tooltip: 'Reset Stats',
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      style: IconButton.styleFrom(
+                        backgroundColor: const Color(0xFF18181B),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          side: const BorderSide(color: kLine),
+                        ),
+                        padding: const EdgeInsets.all(8),
+                      ),
+                      onPressed: () {
+                        widget.engine.resetStats(widget.targetInfo.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Statistics reset for this item')),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      tooltip: 'Copy Report',
+                      icon: const Icon(Icons.copy_rounded, size: 18),
+                      style: IconButton.styleFrom(
+                        backgroundColor: const Color(0xFF18181B),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          side: const BorderSide(color: kLine),
+                        ),
+                        padding: const EdgeInsets.all(8),
+                      ),
+                      onPressed: () => _copyReport(metrics, samples),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  bottom: const PreferredSize(
+                    preferredSize: Size.fromHeight(1),
+                    child: Divider(height: 1, color: kLine),
+                  ),
+                ),
           body: SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
@@ -398,7 +476,7 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                   _DetailsCard(
                     targetInfo: widget.targetInfo,
                     engine: widget.engine,
-                    phase: _latestPhase,
+                      phase: _latestPhase,
                     metrics: metrics,
                   ),
                   const SizedBox(height: 14),
@@ -409,7 +487,10 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
               ),
             ),
           ),
-        );
+        ),
+      ),
+    ),
+  );
       },
     );
   }

@@ -15,6 +15,7 @@ class DesktopToolbar extends StatelessWidget {
     required this.onCopy,
     required this.onSettings,
     required this.onNic,
+    this.onHelp,
   });
 
   final String title;
@@ -27,6 +28,7 @@ class DesktopToolbar extends StatelessWidget {
   final VoidCallback onCopy;
   final VoidCallback onSettings;
   final ValueChanged<String> onNic;
+  final VoidCallback? onHelp;
 
   @override
   Widget build(BuildContext context) {
@@ -133,6 +135,14 @@ class DesktopToolbar extends StatelessWidget {
             icon: Icons.tune_rounded,
             onTap: onSettings,
           ),
+          if (onHelp != null) ...[
+            const SizedBox(width: 4),
+            _ActionButton(
+              label: '?',
+              icon: Icons.keyboard_outlined,
+              onTap: onHelp!,
+            ),
+          ],
         ],
       ),
     );

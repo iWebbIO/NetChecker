@@ -394,8 +394,11 @@ class _SettingsFormState extends State<SettingsForm> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -711,14 +714,16 @@ class _SectionCard extends StatelessWidget {
             children: [
               Icon(icon, size: 16, color: kPaper),
               const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13.5,
-                  letterSpacing: -0.2,
-                  color: kPaper,
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13.5,
+                    letterSpacing: -0.2,
+                    color: kPaper,
+                  ),
                 ),
               ),
             ],
@@ -821,10 +826,14 @@ class _MsSlider extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 11.5, color: kPaper),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 11.5, color: kPaper),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
+            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(

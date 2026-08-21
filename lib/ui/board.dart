@@ -7,6 +7,7 @@ import '../probe/models.dart';
 import '../theme.dart';
 import 'cells.dart';
 import 'profile/item_profile_page.dart';
+import 'profile/route_map_page.dart';
 
 class ProbeBoard extends StatelessWidget {
   const ProbeBoard({super.key, required this.engine, this.compact = false});
@@ -16,6 +17,10 @@ class ProbeBoard extends StatelessWidget {
 
   void _openProfile(BuildContext context, ItemProfileInfo info) {
     ItemProfilePage.open(context, engine: engine, targetInfo: info);
+  }
+
+  void _openTrace(BuildContext context, String target, String title) {
+    RouteMapPage.open(context, target: target, title: title);
   }
 
   @override
@@ -56,6 +61,7 @@ class ProbeBoard extends StatelessWidget {
                         explanation: r.description,
                       ),
                     ),
+                    onTraceroute: () => _openTrace(context, r.address, r.name),
                     onCopy:
                         '${r.name} ${r.address} ${engine.dnsHits[r.address]?.readout}',
                   ),
@@ -134,6 +140,7 @@ class ProbeBoard extends StatelessWidget {
                       }
                       _openProfile(context, info);
                     },
+                    onTraceroute: () => _openTrace(context, '1.1.1.1', p.label),
                     onCopy: '${p.label} ${engine.protoHits[p.id]?.readout}',
                   ),
                 ),
@@ -163,6 +170,7 @@ class ProbeBoard extends StatelessWidget {
                             'Cloudflare servers power millions of websites and proxy connections.',
                       ),
                     ),
+                    onTraceroute: () => _openTrace(context, e.ip, 'Cloudflare (${e.short})'),
                     onCopy: '${e.ip} ${engine.edgeHits[e.ip]?.readout}',
                   ),
                 ),
@@ -199,6 +207,7 @@ class ProbeBoard extends StatelessWidget {
                             'Checks whether your network is redirecting or tampering with DNS lookups for blocked websites.',
                       ),
                     ),
+                    onTraceroute: () => _openTrace(context, r.address, r.name),
                     onCopy:
                         '${r.short} ${engine.settings.huntName} ${engine.huntHits[r.address]?.detail ?? engine.huntHits[r.address]?.readout}',
                   ),
@@ -255,6 +264,7 @@ class ProbeBoard extends StatelessWidget {
                             'Tells you if you can visit ${d.host} on your current connection.',
                       ),
                     ),
+                    onTraceroute: () => _openTrace(context, d.host, d.host),
                     onCopy: '${d.host} ${hit.readout} ${hit.detail ?? ''}',
                   );
                 },

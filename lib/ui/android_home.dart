@@ -3,12 +3,18 @@ import 'package:flutter/material.dart';
 import '../probe/engine.dart';
 import '../theme.dart';
 import 'board.dart';
+import 'keyboard/shortcuts.dart';
+import 'keyboard/shortcuts_dialog.dart';
 import 'settings_form.dart';
 
 class AndroidHome extends StatelessWidget {
   const AndroidHome({super.key, required this.engine});
 
   final ProbeEngine engine;
+
+  void _showHelp(BuildContext context) {
+    ShortcutsCheatsheetDialog.show(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,125 +24,142 @@ class AndroidHome extends StatelessWidget {
         final isRunning = engine.settings.running;
         final totalDomains = engine.domains.length;
 
-        return Scaffold(
-          backgroundColor: kInk,
-          appBar: PreferredSize(
-            preferredSize: const Size.fromHeight(56),
-            child: Container(
-              decoration: const BoxDecoration(
-                color: kInk,
-                border: Border(bottom: BorderSide(color: kLine, width: 1)),
-              ),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Row(
-                    children: [
-                      // Brand & Live Pulse
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF18181B),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: kLine),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: isRunning ? kOk : kTo,
-                                shape: BoxShape.circle,
-                                boxShadow: isRunning
-                                    ? [
-                                        BoxShadow(
-                                          color: kOk.withValues(alpha: 0.6),
-                                          blurRadius: 4,
-                                          spreadRadius: 1,
-                                        ),
-                                      ]
-                                    : null,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            const Text(
-                              'NetChecker',
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                letterSpacing: -0.2,
-                                color: kPaper,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-
-                      // Stat Badges
-                      Expanded(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
+        return Builder(
+          builder: (bCtx) {
+            return AppShortcutsWrapper(
+              onToggleRun: () => engine.setRunning(!isRunning),
+              onOpenSettings: () => _openSettings(bCtx),
+              onCopyReport: () => copyReport(bCtx, engine),
+              onShowHelp: () => _showHelp(bCtx),
+              child: Scaffold(
+            backgroundColor: kInk,
+            appBar: PreferredSize(
+              preferredSize: const Size.fromHeight(56),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: kInk,
+                  border: Border(bottom: BorderSide(color: kLine, width: 1)),
+                ),
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: Row(
+                      children: [
+                        // Brand & Live Pulse
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF18181B),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: kLine),
+                          ),
                           child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              _MetricPill(
-                                label: '${engine.okCount} ok',
-                                color: kOk,
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: isRunning ? kOk : kTo,
+                                  shape: BoxShape.circle,
+                                  boxShadow: isRunning
+                                      ? [
+                                          BoxShadow(
+                                            color: kOk.withValues(alpha: 0.6),
+                                            blurRadius: 4,
+                                            spreadRadius: 1,
+                                          ),
+                                        ]
+                                      : null,
+                                ),
                               ),
-                              const SizedBox(width: 4),
-                              _MetricPill(
-                                label: '${engine.failCount} down',
-                                color: engine.failCount > 0 ? kFail : kSubtle,
-                              ),
-                              const SizedBox(width: 4),
-                              _MetricPill(
-                                label: '${engine.checkedCount}/$totalDomains',
-                                color: kMute,
+                              const SizedBox(width: 6),
+                              const Text(
+                                'NetChecker',
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  letterSpacing: -0.2,
+                                  color: kPaper,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
+                        const SizedBox(width: 8),
 
-                      // Action Buttons
-                      _ActionPill(
-                        label: isRunning ? 'pause' : 'run',
-                        icon: isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                        color: isRunning ? kOk : kTo,
-                        onTap: () => engine.setRunning(!isRunning),
-                      ),
-                      const SizedBox(width: 4),
-                      _ActionPill(
-                        label: 'copy',
-                        icon: Icons.copy_rounded,
-                        color: kPaper,
-                        onTap: () => copyReport(context, engine),
-                      ),
-                      const SizedBox(width: 4),
-                      _ActionPill(
-                        label: 'set',
-                        icon: Icons.tune_rounded,
-                        color: kPaper,
-                        onTap: () => _openSettings(context),
-                      ),
-                    ],
+                        // Stat Badges
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _MetricPill(
+                                  label: '${engine.okCount} ok',
+                                  color: kOk,
+                                ),
+                                const SizedBox(width: 4),
+                                _MetricPill(
+                                  label: '${engine.failCount} down',
+                                  color: engine.failCount > 0 ? kFail : kSubtle,
+                                ),
+                                const SizedBox(width: 4),
+                                _MetricPill(
+                                  label: '${engine.checkedCount}/$totalDomains',
+                                  color: kMute,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+
+                        // Action Buttons
+                        _ActionPill(
+                          label: isRunning ? 'pause' : 'run',
+                          icon: isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          color: isRunning ? kOk : kTo,
+                          onTap: () => engine.setRunning(!isRunning),
+                        ),
+                        const SizedBox(width: 4),
+                        _ActionPill(
+                          label: 'copy',
+                          icon: Icons.copy_rounded,
+                          color: kPaper,
+                          onTap: () => copyReport(bCtx, engine),
+                        ),
+                        const SizedBox(width: 4),
+                        _ActionPill(
+                          label: 'set',
+                          icon: Icons.tune_rounded,
+                          color: kPaper,
+                          onTap: () => _openSettings(bCtx),
+                        ),
+                        const SizedBox(width: 4),
+                        _ActionPill(
+                          label: '?',
+                          icon: Icons.keyboard_outlined,
+                          color: kMute,
+                          onTap: () => _showHelp(bCtx),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          body: SafeArea(
-            child: ProbeBoard(engine: engine),
+            body: SafeArea(
+              child: ProbeBoard(engine: engine),
+            ),
           ),
         );
       },
     );
-  }
+  },
+);
+}
 
   Future<void> _openSettings(BuildContext context) {
     return showModalBottomSheet<void>(

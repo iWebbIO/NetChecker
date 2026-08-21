@@ -130,9 +130,13 @@ class ProbeEngine extends ChangeNotifier {
   Future<void> apply(AppSettings next) async {
     settings = next;
     _rebuildDomains();
-    await settings.save(_prefs!);
+    if (_prefs != null) {
+      await settings.save(_prefs!);
+    }
     _epoch++;
-    _ensureLoops();
+    if (_loops) {
+      _ensureLoops();
+    }
     notifyListeners();
   }
 

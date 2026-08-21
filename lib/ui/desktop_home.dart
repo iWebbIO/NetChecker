@@ -4,6 +4,8 @@ import '../probe/engine.dart';
 import '../theme.dart';
 import 'board.dart';
 import 'desk_window.dart';
+import 'keyboard/shortcuts.dart';
+import 'keyboard/shortcuts_dialog.dart';
 import 'settings_form.dart';
 import 'title_bar.dart';
 
@@ -16,6 +18,10 @@ class DesktopHome extends StatelessWidget {
     await engine.setAlwaysOnTop(on);
     await DeskWindow.setAlwaysOnTop(on);
     await DeskWindow.setCompact(on);
+  }
+
+  void _showHelp(BuildContext context) {
+    ShortcutsCheatsheetDialog.show(context);
   }
 
   Future<void> _settings(BuildContext context) {
@@ -101,29 +107,41 @@ class DesktopHome extends StatelessWidget {
       listenable: engine,
       builder: (context, _) {
         final compact = engine.settings.alwaysOnTop;
-        return Material(
-          color: kInk,
-          child: Column(
-            children: [
-              DesktopToolbar(
-                title:
-                    'NetChecker  ${engine.okCount} ok  ${engine.failCount} down  ${engine.checkedCount}/${engine.domains.length}',
-                alwaysOnTop: compact,
-                running: engine.settings.running,
-                nics: [for (final n in engine.nics) (n.id, n.label)],
-                nicId: engine.settings.nicId,
-                onToggleRun: () => engine.setRunning(!engine.settings.running),
-                onTogglePin: () => _pin(!compact),
-                onCopy: () => copyReport(context, engine),
-                onSettings: () => _settings(context),
-                onNic: engine.setNic,
+        return Builder(
+          builder: (bCtx) {
+            return AppShortcutsWrapper(
+              onToggleRun: () => engine.setRunning(!engine.settings.running),
+              onOpenSettings: () => _settings(bCtx),
+              onCopyReport: () => copyReport(bCtx, engine),
+              onTogglePin: () => _pin(!compact),
+              onShowHelp: () => _showHelp(bCtx),
+              child: Material(
+                color: kInk,
+                child: Column(
+                  children: [
+                    DesktopToolbar(
+                      title:
+                          'NetChecker  ${engine.okCount} ok  ${engine.failCount} down  ${engine.checkedCount}/${engine.domains.length}',
+                      alwaysOnTop: compact,
+                      running: engine.settings.running,
+                      nics: [for (final n in engine.nics) (n.id, n.label)],
+                      nicId: engine.settings.nicId,
+                      onToggleRun: () => engine.setRunning(!engine.settings.running),
+                      onTogglePin: () => _pin(!compact),
+                      onCopy: () => copyReport(bCtx, engine),
+                      onSettings: () => _settings(bCtx),
+                      onHelp: () => _showHelp(bCtx),
+                      onNic: engine.setNic,
+                    ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: ProbeBoard(engine: engine, compact: compact),
+                    ),
+                  ],
+                ),
               ),
-              const Divider(height: 1),
-              Expanded(
-                child: ProbeBoard(engine: engine, compact: compact),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
