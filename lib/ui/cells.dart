@@ -16,6 +16,7 @@ class ProbeCell extends StatelessWidget {
     this.live = false,
     this.wide = false,
     this.onCopy,
+    this.onTap,
   });
 
   final String label;
@@ -24,6 +25,7 @@ class ProbeCell extends StatelessWidget {
   final bool live;
   final bool wide;
   final String? onCopy;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +44,10 @@ class ProbeCell extends StatelessWidget {
       child: Material(
         color: inverted ? kLive : Colors.transparent,
         child: InkWell(
+          mouseCursor: onTap != null
+              ? SystemMouseCursors.click
+              : SystemMouseCursors.basic,
+          onTap: onTap,
           onLongPress: onCopy == null
               ? null
               : () async {

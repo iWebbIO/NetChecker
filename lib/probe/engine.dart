@@ -27,6 +27,24 @@ class ProbeEngine extends ChangeNotifier {
   final Map<String, Hit> huntHits = {};
   final Map<String, Hit> protoHits = {};
 
+  final Map<String, List<ProbeSample>> sampleHistory = {};
+
+  void _recordSample(String id, Hit hit, {PhaseBreakdown? phase}) {
+    final list = sampleHistory.putIfAbsent(id, () => []);
+    list.add(ProbeSample.fromHit(hit, phase: phase));
+    if (list.length > 60) {
+      list.removeRange(0, list.length - 60);
+    }
+  }
+
+  List<ProbeSample> getHistory(String id) =>
+      List.unmodifiable(sampleHistory[id] ?? const []);
+
+  ItemMetrics getMetrics(String id, {Hit? currentHit}) {
+    final samples = sampleHistory[id] ?? const [];
+    return ItemMetrics.fromSamples(samples, currentHit: currentHit);
+  }
+
   String? liveDomain;
   String? liveDns;
   String? liveEdge;
@@ -134,6 +152,7 @@ class ProbeEngine extends ChangeNotifier {
       if (_disposed) return;
       if (epoch == _epoch) {
         domainHits[target.host] = hit;
+        _recordSample(target.host, hit);
         liveDomain = null;
         notifyListeners();
         i++;
@@ -161,6 +180,7 @@ class ProbeEngine extends ChangeNotifier {
       if (_disposed) return;
       if (epoch == _epoch) {
         dnsHits[r.address] = hit;
+        _recordSample(r.address, hit);
         liveDns = null;
         notifyListeners();
         i++;
@@ -186,6 +206,7 @@ class ProbeEngine extends ChangeNotifier {
       if (_disposed) return;
       if (epoch == _epoch) {
         protoHits[proto.id] = protoHit;
+        _recordSample(proto.id, protoHit);
         liveProto = null;
         protoI++;
         notifyListeners();
@@ -206,6 +227,7 @@ class ProbeEngine extends ChangeNotifier {
       if (_disposed) return;
       if (epoch == _epoch) {
         edgeHits[edge.ip] = edgeHit;
+        _recordSample(edge.ip, edgeHit);
         liveEdge = null;
         edgeI++;
         notifyListeners();
@@ -226,11 +248,114 @@ class ProbeEngine extends ChangeNotifier {
       if (_disposed) return;
       if (epoch == _epoch) {
         huntHits[hunter.address] = huntHit;
+        _recordSample(hunter.address, huntHit);
         liveHunt = null;
         huntI++;
         notifyListeners();
       }
       await Future<void>.delayed(settings.dnsDelay);
+    }
+  }
+
+  Future<ProbeSample> runDeepProbe(ItemProfileInfo item) async {
+    switch (item.category) {
+      case ItemCategory.domain:
+        final sample = await _tcp.deepHttps(
+          item.hostOrIp ?? item.id,
+          timeout: settings.httpTimeout,
+        );
+        final hit = Hit(
+          status: sample.status,
+          ms: sample.ms,
+          detail: sample.detail,
+          at: sample.timestamp,
+        );
+        domainHits[item.id] = hit;
+        _recordSample(item.id, hit, phase: sample.phase);
+        notifyListeners();
+        return sample;
+
+      case ItemCategory.dns:
+        final hit = await _dns.latency(
+          item.hostOrIp ?? item.id,
+          'google.com',
+          timeout: settings.dnsTimeout,
+        );
+        dnsHits[item.id] = hit;
+        final sample = ProbeSample.fromHit(
+          hit,
+          phase: PhaseBreakdown(
+            dnsMs: hit.ms,
+            anomaly: hit.status == HitStatus.ok
+                ? null
+                : (hit.detail ?? 'DNS Query Timeout/Fail'),
+          ),
+        );
+        _recordSample(item.id, hit, phase: sample.phase);
+        notifyListeners();
+        return sample;
+
+      case ItemCategory.edge:
+        final edge = edges.firstWhere(
+          (e) => e.ip == item.id,
+          orElse: () => EdgeTarget(item.id, sni: item.sni ?? 'cloudflare.com'),
+        );
+        final tcpHit = await _tcp.connect(edge.ip, 443, timeout: settings.httpTimeout);
+        final tlsHit = await _tcp.tls(edge.ip, edge.sni, timeout: settings.httpTimeout);
+        final overallOk = tlsHit.status == HitStatus.ok;
+        final hit = tlsHit;
+        edgeHits[item.id] = hit;
+        final sample = ProbeSample(
+          timestamp: DateTime.now(),
+          status: hit.status,
+          ms: hit.ms,
+          detail: hit.detail,
+          phase: PhaseBreakdown(
+            tcpMs: tcpHit.ms,
+            tlsMs: tlsHit.ms,
+            anomaly: overallOk ? null : 'Edge TLS Fail (${tlsHit.detail})',
+          ),
+        );
+        _recordSample(item.id, hit, phase: sample.phase);
+        notifyListeners();
+        return sample;
+
+      case ItemCategory.hunt:
+        final hit = await _dns.hunt(
+          item.hostOrIp ?? item.id,
+          settings.huntName,
+          timeout: settings.dnsTimeout,
+        );
+        huntHits[item.id] = hit;
+        final isPoisoned = hit.detail != null &&
+            (hit.detail!.startsWith('10.10.34.') ||
+                hit.detail == '185.88.153.235' ||
+                hit.detail == '185.88.153.236');
+        final sample = ProbeSample.fromHit(
+          hit,
+          phase: PhaseBreakdown(
+            dnsMs: hit.ms,
+            resolvedIps: hit.detail != null ? [hit.detail!] : null,
+            anomaly: isPoisoned ? 'DNS Poisoning (${hit.detail})' : null,
+          ),
+        );
+        _recordSample(item.id, hit, phase: sample.phase);
+        notifyListeners();
+        return sample;
+
+      case ItemCategory.proto:
+        final hit = await _runProto(item.id);
+        protoHits[item.id] = hit;
+        final sample = ProbeSample.fromHit(
+          hit,
+          phase: PhaseBreakdown(
+            tcpMs: hit.ms,
+            anomaly: hit.status == HitStatus.ok ? null : 'Protocol Check Failed',
+          ),
+        );
+        _recordSample(item.id, hit, phase: sample.phase);
+        notifyListeners();
+        return sample;
     }
   }
 

@@ -6,12 +6,17 @@ import '../probe/engine.dart';
 import '../probe/models.dart';
 import '../theme.dart';
 import 'cells.dart';
+import 'profile/item_profile_page.dart';
 
 class ProbeBoard extends StatelessWidget {
   const ProbeBoard({super.key, required this.engine, this.compact = false});
 
   final ProbeEngine engine;
   final bool compact;
+
+  void _openProfile(BuildContext context, ItemProfileInfo info) {
+    ItemProfilePage.open(context, engine: engine, targetInfo: info);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +37,18 @@ class ProbeBoard extends StatelessWidget {
                     label: r.short,
                     hit: engine.dnsHits[r.address] ?? Hit.idle,
                     live: engine.liveDns == r.address,
+                    onTap: () => _openProfile(
+                      context,
+                      ItemProfileInfo(
+                        id: r.address,
+                        category: ItemCategory.dns,
+                        title: r.name,
+                        subtitle: 'DNS Resolver: ${r.address}',
+                        tag: r.short,
+                        hostOrIp: r.address,
+                        port: 53,
+                      ),
+                    ),
                     onCopy:
                         '${r.name} ${r.address} ${engine.dnsHits[r.address]?.readout}',
                   ),
@@ -50,6 +67,16 @@ class ProbeBoard extends StatelessWidget {
                     label: p.label,
                     hit: engine.protoHits[p.id] ?? Hit.idle,
                     live: engine.liveProto == p.id,
+                    onTap: () => _openProfile(
+                      context,
+                      ItemProfileInfo(
+                        id: p.id,
+                        category: ItemCategory.proto,
+                        title: p.label.toUpperCase(),
+                        subtitle: 'Protocol Check: ${p.label}',
+                        tag: p.label,
+                      ),
+                    ),
                     onCopy: '${p.label} ${engine.protoHits[p.id]?.readout}',
                   ),
                 ),
@@ -60,6 +87,19 @@ class ProbeBoard extends StatelessWidget {
                     label: e.short,
                     hit: engine.edgeHits[e.ip] ?? Hit.idle,
                     live: engine.liveEdge == e.ip,
+                    onTap: () => _openProfile(
+                      context,
+                      ItemProfileInfo(
+                        id: e.ip,
+                        category: ItemCategory.edge,
+                        title: e.short,
+                        subtitle: 'Edge Anycast CDN: ${e.ip}',
+                        tag: e.label,
+                        hostOrIp: e.ip,
+                        sni: e.sni,
+                        port: 443,
+                      ),
+                    ),
                     onCopy: '${e.ip} ${engine.edgeHits[e.ip]?.readout}',
                   ),
                 ),
@@ -78,6 +118,18 @@ class ProbeBoard extends StatelessWidget {
                     hit: engine.huntHits[r.address] ?? Hit.idle,
                     live: engine.liveHunt == r.address,
                     sub: engine.huntHits[r.address]?.detail,
+                    onTap: () => _openProfile(
+                      context,
+                      ItemProfileInfo(
+                        id: r.address,
+                        category: ItemCategory.hunt,
+                        title: '${r.short} Hunt: ${engine.settings.huntName}',
+                        subtitle: 'Resolver: ${r.address}',
+                        tag: r.short,
+                        hostOrIp: r.address,
+                        port: 53,
+                      ),
+                    ),
                     onCopy:
                         '${r.short} ${engine.settings.huntName} ${engine.huntHits[r.address]?.detail ?? engine.huntHits[r.address]?.readout}',
                   ),
@@ -116,6 +168,19 @@ class ProbeBoard extends StatelessWidget {
                     hit: hit,
                     live: engine.liveDomain == d.host,
                     sub: hit.detail,
+                    onTap: () => _openProfile(
+                      context,
+                      ItemProfileInfo(
+                        id: d.host,
+                        category: ItemCategory.domain,
+                        title: d.host,
+                        subtitle: 'https://${d.host}/',
+                        tag: d.short,
+                        hostOrIp: d.host,
+                        sni: d.host,
+                        port: 443,
+                      ),
+                    ),
                     onCopy: '${d.host} ${hit.readout} ${hit.detail ?? ''}',
                   );
                 },
