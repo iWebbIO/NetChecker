@@ -50,10 +50,13 @@ class ProbeCell extends StatelessWidget {
     }
 
     final isFail = hit.status == HitStatus.fail;
+    final isPoisoned = hit.hasPrivateIp ||
+        isPrivateOrPoisonedIp(hit.detail) ||
+        (sub != null && isPrivateOrPoisonedIp(sub));
 
     return Semantics(
       button: true,
-      label: '$displayLabel ${hit.readout}',
+      label: '$displayLabel ${hit.readout}${isPoisoned ? " (Poisoned Private IP)" : ""}',
       child: Material(
         color: inverted ? kLive : Colors.transparent,
         child: InkWell(
@@ -75,10 +78,12 @@ class ProbeCell extends StatelessWidget {
             constraints: BoxConstraints(minHeight: minTap, minWidth: minTap),
             child: DecoratedBox(
               decoration: BoxDecoration(
-                border: const Border(
-                  right: BorderSide(color: kLine, width: 1),
-                  bottom: BorderSide(color: kLine, width: 1),
-                ),
+                border: isPoisoned
+                    ? Border.all(color: kPoison, width: 2)
+                    : const Border(
+                        right: BorderSide(color: kLine, width: 1),
+                        bottom: BorderSide(color: kLine, width: 1),
+                      ),
                 gradient: !inverted && isFail
                     ? RadialGradient(
                         center: Alignment.bottomRight,
@@ -121,8 +126,13 @@ class ProbeCell extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: inverted ? kInk : kMute,
+                          color: inverted
+                              ? kInk
+                              : (isPoisoned ? kPoison : kMute),
                           fontSize: 10,
+                          fontWeight: isPoisoned
+                              ? FontWeight.w600
+                              : FontWeight.w400,
                         ),
                       ),
                   ],

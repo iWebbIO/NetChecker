@@ -186,7 +186,17 @@ class ProbeEngine extends ChangeNotifier {
       if (_disposed) return;
       if (epoch == _epoch) {
         domainHits[target.host] = hit;
-        _recordSample(target.host, hit);
+        _recordSample(
+          target.host,
+          hit,
+          phase: PhaseBreakdown(
+            resolvedIps:
+                hit.hasPrivateIp && hit.detail != null ? [hit.detail!] : null,
+            anomaly: hit.hasPrivateIp
+                ? 'DNS Poisoning (${hit.detail})'
+                : (hit.status == HitStatus.ok ? null : hit.detail),
+          ),
+        );
         liveDomain = null;
         notifyListeners();
         i++;
@@ -302,18 +312,17 @@ class ProbeEngine extends ChangeNotifier {
       );
       if (_disposed) return;
       if (epoch == _epoch) {
-        huntHits[hunter.address] = huntHit;
+        final isPoisoned = isPrivateOrPoisonedIp(huntHit.detail);
+        final finalHit = huntHit.copyWith(isPoisoned: isPoisoned);
+        huntHits[hunter.address] = finalHit;
         _recordSample(
           hunter.address,
-          huntHit,
+          finalHit,
           phase: PhaseBreakdown(
-            dnsMs: huntHit.ms,
-            resolvedIps: huntHit.detail != null ? [huntHit.detail!] : null,
-            anomaly: (huntHit.detail != null &&
-                    (huntHit.detail!.startsWith('10.10.34.') ||
-                        huntHit.detail == '185.88.153.235' ||
-                        huntHit.detail == '185.88.153.236'))
-                ? 'DNS Poisoning (${huntHit.detail})'
+            dnsMs: finalHit.ms,
+            resolvedIps: finalHit.detail != null ? [finalHit.detail!] : null,
+            anomaly: isPoisoned
+                ? 'DNS Poisoning (${finalHit.detail})'
                 : null,
           ),
         );
@@ -332,10 +341,14 @@ class ProbeEngine extends ChangeNotifier {
           item.hostOrIp ?? item.id,
           timeout: settings.httpTimeout,
         );
+        final isPoisoned = sample.phase?.resolvedIps?.any(isPrivateOrPoisonedIp) == true ||
+            isPrivateOrPoisonedIp(sample.detail) ||
+            sample.phase?.anomaly?.contains('Poisoning') == true;
         final hit = Hit(
           status: sample.status,
           ms: sample.ms,
           detail: sample.detail,
+          isPoisoned: isPoisoned,
           at: sample.timestamp,
         );
         domainHits[item.id] = hit;
@@ -389,16 +402,14 @@ class ProbeEngine extends ChangeNotifier {
         return sample;
 
       case ItemCategory.hunt:
-        final hit = await _dns.hunt(
+        final rawHit = await _dns.hunt(
           item.hostOrIp ?? item.id,
           settings.huntName,
           timeout: settings.dnsTimeout,
         );
+        final isPoisoned = isPrivateOrPoisonedIp(rawHit.detail);
+        final hit = rawHit.copyWith(isPoisoned: isPoisoned);
         huntHits[item.id] = hit;
-        final isPoisoned = hit.detail != null &&
-            (hit.detail!.startsWith('10.10.34.') ||
-                hit.detail == '185.88.153.235' ||
-                hit.detail == '185.88.153.236');
         final sample = ProbeSample.fromHit(
           hit,
           phase: PhaseBreakdown(

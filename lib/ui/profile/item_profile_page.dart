@@ -427,12 +427,14 @@ class _HeroBanner extends StatelessWidget {
       return 'Checking...';
     }
     final detail = currentHit.detail ?? '';
+    if (currentHit.hasPrivateIp || isPrivateOrPoisonedIp(detail)) {
+      return detail.isNotEmpty
+          ? 'Blocked (DNS Poisoning: $detail)'
+          : 'Blocked (DNS Poisoning)';
+    }
     if (detail.contains('rst')) return 'Connection Reset';
     if (detail.contains('tls') || detail.contains('hs')) return 'SSL / TLS Error';
     if (detail.contains('nx')) return 'DNS Failed';
-    if (detail.startsWith('10.10.34.') || detail == '185.88.153.235') {
-      return 'Blocked (Fake DNS)';
-    }
     return detail.isNotEmpty ? 'Failed ($detail)' : 'Offline';
   }
 

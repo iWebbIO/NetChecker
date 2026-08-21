@@ -1,8 +1,13 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
+import '../data/update_service.dart';
 import '../probe/engine.dart';
 import '../probe/models.dart';
 import '../settings/app_settings.dart';
+import '../theme.dart';
 import 'desk_window.dart';
 
 class SettingsForm extends StatefulWidget {
@@ -24,12 +29,112 @@ class _SettingsFormState extends State<SettingsForm> {
   late final TextEditingController _extra;
   late AppSettings _draft;
 
+  String _appVersion = '1.0.0+1';
+  bool _checkingUpdate = false;
+  UpdateCheckResult? _updateResult;
+  bool _downloading = false;
+  double _downloadProgress = 0.0;
+  String? _downloadStatusText;
+
   @override
   void initState() {
     super.initState();
     _draft = widget.engine.settings;
     _hunt = TextEditingController(text: _draft.huntName);
     _extra = TextEditingController(text: _draft.extraDomains.join('\n'));
+    _initVersion();
+  }
+
+  Future<void> _initVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          _appVersion = info.buildNumber.isNotEmpty
+              ? '${info.version}+${info.buildNumber}'
+              : info.version;
+        });
+      }
+    } catch (_) {
+      // Keep default fallback
+    }
+  }
+
+  Future<void> _checkUpdate() async {
+    setState(() {
+      _checkingUpdate = true;
+      _updateResult = null;
+      _downloadStatusText = null;
+    });
+
+    try {
+      final res = await UpdateService.checkForUpdates(
+        currentVersionOverride: _appVersion,
+      );
+      if (mounted) {
+        setState(() {
+          _updateResult = res;
+          _checkingUpdate = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _checkingUpdate = false;
+          _updateResult = UpdateCheckResult(
+            currentVersion: _appVersion,
+            isUpdateAvailable: false,
+            errorMessage: 'Error: $e',
+          );
+        });
+      }
+    }
+  }
+
+  Future<void> _downloadAndInstall(ReleaseInfo release) async {
+    final apk = release.apkAsset;
+    if (apk == null) {
+      await UpdateService.openUrl(release.htmlUrl);
+      return;
+    }
+
+    setState(() {
+      _downloading = true;
+      _downloadProgress = 0.0;
+      _downloadStatusText = 'Starting download...';
+    });
+
+    try {
+      final file = await UpdateService.downloadApk(
+        downloadUrl: apk.downloadUrl,
+        onProgress: (received, total) {
+          if (mounted && total > 0) {
+            setState(() {
+              _downloadProgress = received / total;
+              final mbRec = (received / (1024 * 1024)).toStringAsFixed(1);
+              final mbTot = (total / (1024 * 1024)).toStringAsFixed(1);
+              _downloadStatusText = '$mbRec MB / $mbTot MB (${(_downloadProgress * 100).toInt()}%)';
+            });
+          }
+        },
+      );
+
+      if (mounted) {
+        setState(() {
+          _downloading = false;
+          _downloadStatusText = 'Download completed. Launching installer...';
+        });
+      }
+
+      await UpdateService.installApk(file.path);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _downloading = false;
+          _downloadStatusText = 'Download failed: $e';
+        });
+      }
+    }
   }
 
   @override
@@ -193,6 +298,29 @@ class _SettingsFormState extends State<SettingsForm> {
           },
         ),
         const SizedBox(height: 16),
+        const Divider(height: 1),
+        const SizedBox(height: 16),
+        Text('Updates', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 6),
+        Text(
+          'NetChecker v$_appVersion',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: kMute),
+        ),
+        const SizedBox(height: 4),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Auto-check for updates'),
+          subtitle: const Text('Checks GitHub releases for new versions'),
+          value: _draft.autoCheckUpdates,
+          onChanged: (v) => setState(() {
+            _draft = _draft.copyWith(autoCheckUpdates: v);
+          }),
+        ),
+        const SizedBox(height: 8),
+        _buildUpdateStatusCard(context),
+        const SizedBox(height: 20),
+        const Divider(height: 1),
+        const SizedBox(height: 16),
         OutlinedButton.icon(
           onPressed: () {
             widget.engine.resetAllStats();
@@ -210,6 +338,211 @@ class _SettingsFormState extends State<SettingsForm> {
         const SizedBox(height: 20),
         FilledButton(onPressed: _save, child: const Text('Apply')),
       ],
+    );
+  }
+
+  Widget _buildUpdateStatusCard(BuildContext context) {
+    final isAndroid = !kIsWeb && Platform.isAndroid;
+
+    if (_checkingUpdate) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF09070C),
+          border: Border.all(color: kLine),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2, color: kPaper),
+            ),
+            SizedBox(width: 10),
+            Text(
+              'Checking GitHub releases...',
+              style: TextStyle(fontSize: 12, color: kPaper),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_updateResult != null) {
+      final res = _updateResult!;
+      if (res.isUpdateAvailable && res.latestRelease != null) {
+        final rel = res.latestRelease!;
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF09070C),
+            border: Border.all(color: kOk.withValues(alpha: 0.4)),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.new_releases_outlined, size: 16, color: kOk),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'New release: ${rel.tagName}',
+                      style: const TextStyle(
+                        fontFamily: 'Space Mono',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: kOk,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (rel.name.isNotEmpty && rel.name != rel.tagName) ...[
+                const SizedBox(height: 4),
+                Text(
+                  rel.name,
+                  style: const TextStyle(fontSize: 12, color: kPaper),
+                ),
+              ],
+              if (rel.body.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 90),
+                  padding: const EdgeInsets.all(6),
+                  color: const Color(0x33000000),
+                  child: SingleChildScrollView(
+                    child: Text(
+                      rel.body.trim(),
+                      style: const TextStyle(
+                        fontFamily: 'Space Mono',
+                        fontSize: 10,
+                        color: kMute,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 10),
+              if (_downloading) ...[
+                LinearProgressIndicator(
+                  value: _downloadProgress > 0 ? _downloadProgress : null,
+                  color: kOk,
+                  backgroundColor: kLine,
+                ),
+                const SizedBox(height: 4),
+                if (_downloadStatusText != null)
+                  Text(
+                    _downloadStatusText!,
+                    style: const TextStyle(
+                      fontFamily: 'Space Mono',
+                      fontSize: 10,
+                      color: kPaper,
+                    ),
+                  ),
+              ] else ...[
+                if (_downloadStatusText != null) ...[
+                  Text(
+                    _downloadStatusText!,
+                    style: const TextStyle(fontSize: 11, color: kMute),
+                  ),
+                  const SizedBox(height: 6),
+                ],
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    if (isAndroid && rel.apkAsset != null)
+                      FilledButton.icon(
+                        onPressed: () => _downloadAndInstall(rel),
+                        icon: const Icon(Icons.download, size: 14),
+                        label: const Text('Download APK & Install'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: kOk,
+                          foregroundColor: kInk,
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                      ),
+                    OutlinedButton.icon(
+                      onPressed: () => UpdateService.openUrl(rel.htmlUrl),
+                      icon: const Icon(Icons.open_in_new, size: 14),
+                      label: const Text('View on GitHub'),
+                      style: OutlinedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        );
+      } else if (res.errorMessage != null) {
+        return Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF09070C),
+            border: Border.all(color: kFail.withValues(alpha: 0.3)),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.error_outline, size: 16, color: kFail),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  res.errorMessage!,
+                  style: const TextStyle(fontSize: 11, color: kMute),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh, size: 14),
+                onPressed: _checkUpdate,
+                tooltip: 'Retry',
+              ),
+            ],
+          ),
+        );
+      } else {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF09070C),
+            border: Border.all(color: kLine),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.check_circle_outline, size: 16, color: kOk),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Up to date (${res.currentVersion})',
+                  style: const TextStyle(fontSize: 12, color: kPaper),
+                ),
+              ),
+              TextButton(
+                onPressed: _checkUpdate,
+                child: const Text('Check again', style: TextStyle(fontSize: 11)),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+
+    return OutlinedButton.icon(
+      onPressed: _checkUpdate,
+      icon: const Icon(Icons.sync, size: 16),
+      label: const Text('Check for Updates'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: kPaper,
+        side: const BorderSide(color: kLine),
+      ),
     );
   }
 }

@@ -114,6 +114,35 @@ class TcpTlsProbe {
     final sw = Stopwatch()..start();
     HttpClient? client;
     try {
+      // Check DNS resolution for private / poisoned IP
+      List<InternetAddress>? addrs;
+      try {
+        addrs = await InternetAddress.lookup(host).timeout(
+          timeout > const Duration(seconds: 2) ? const Duration(seconds: 2) : timeout,
+        );
+      } catch (_) {}
+
+      String? poisonedIp;
+      if (addrs != null && addrs.isNotEmpty) {
+        for (final a in addrs) {
+          if (isPrivateOrPoisonedIp(a.address)) {
+            poisonedIp = a.address;
+            break;
+          }
+        }
+      }
+
+      if (poisonedIp != null) {
+        sw.stop();
+        return Hit(
+          status: HitStatus.fail,
+          ms: sw.elapsedMilliseconds,
+          detail: poisonedIp,
+          isPoisoned: true,
+          at: DateTime.now(),
+        );
+      }
+
       client = HttpClient();
       client.connectionTimeout = timeout;
       client.idleTimeout = timeout;
@@ -199,11 +228,7 @@ class TcpTlsProbe {
       resolvedIps = addrs.map((a) => a.address).toList();
 
       for (final ip in resolvedIps) {
-        if (ip.startsWith('10.10.34.') ||
-            ip == '185.88.153.235' ||
-            ip == '185.88.153.236' ||
-            ip == '10.10.34.34' ||
-            ip == '10.10.34.35') {
+        if (isPrivateOrPoisonedIp(ip)) {
           anomaly = 'DNS Poisoning (Gov Sinkhole $ip)';
           break;
         }

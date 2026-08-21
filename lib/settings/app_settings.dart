@@ -15,6 +15,7 @@ class AppSettings {
     this.privacyMode = false,
     this.maxRounds = 0,
     this.exportFormat = 'markdown',
+    this.autoCheckUpdates = true,
   });
 
   final int httpTimeoutMs;
@@ -30,6 +31,7 @@ class AppSettings {
   final bool privacyMode;
   final int maxRounds;
   final String exportFormat;
+  final bool autoCheckUpdates;
 
   Duration get httpTimeout => Duration(milliseconds: httpTimeoutMs);
   Duration get itemDelay => Duration(milliseconds: itemDelayMs);
@@ -50,6 +52,7 @@ class AppSettings {
     bool? privacyMode,
     int? maxRounds,
     String? exportFormat,
+    bool? autoCheckUpdates,
   }) {
     return AppSettings(
       httpTimeoutMs: httpTimeoutMs ?? this.httpTimeoutMs,
@@ -65,6 +68,7 @@ class AppSettings {
       privacyMode: privacyMode ?? this.privacyMode,
       maxRounds: maxRounds ?? this.maxRounds,
       exportFormat: exportFormat ?? this.exportFormat,
+      autoCheckUpdates: autoCheckUpdates ?? this.autoCheckUpdates,
     );
   }
 
@@ -83,6 +87,7 @@ class AppSettings {
       privacyMode: p.getBool('privacyMode') ?? false,
       maxRounds: p.getInt('maxRounds') ?? 0,
       exportFormat: p.getString('exportFormat') ?? 'markdown',
+      autoCheckUpdates: p.getBool('autoCheckUpdates') ?? true,
     );
   }
 
@@ -100,5 +105,6 @@ class AppSettings {
     await p.setBool('privacyMode', privacyMode);
     await p.setInt('maxRounds', maxRounds);
     await p.setString('exportFormat', exportFormat);
+    await p.setBool('autoCheckUpdates', autoCheckUpdates);
   }
 }

@@ -8,6 +8,8 @@ import 'package:netchecker/probe/engine.dart';
 import 'package:netchecker/probe/geoip.dart';
 import 'package:netchecker/probe/models.dart';
 import 'package:netchecker/probe/traceroute.dart';
+import 'package:netchecker/theme.dart';
+import 'package:netchecker/ui/cells.dart';
 import 'package:netchecker/ui/profile/item_profile_page.dart';
 import 'package:netchecker/ui/profile/latency_chart.dart';
 import 'package:netchecker/ui/profile/latency_histogram.dart';
@@ -253,6 +255,153 @@ void main() {
       expect(find.text('ROUTE MAP · TRACEROUTE'), findsOneWidget);
       expect(find.text('Cloudflare DNS'), findsOneWidget);
       expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+    });
+  });
+
+  group('Private and DNS Poisoning IP Classification', () {
+    test('identifies Iran TIC DNS poisoning IPs (10.10.34.0/24)', () {
+      expect(isPrivateOrPoisonedIp('10.10.34.36'), isTrue);
+      expect(isPrivateOrPoisonedIp('10.10.34.34'), isTrue);
+      expect(isPrivateOrPoisonedIp('10.10.34.35'), isTrue);
+      expect(isPrivateOrPoisonedIp('10.10.34.1'), isTrue);
+      expect(isPrivateOrPoisonedIp('10.10.34.254'), isTrue);
+    });
+
+    test('identifies 198.18.0.0/16 and 198.18.0.0/15 benchmarking/filtering ranges', () {
+      expect(isPrivateOrPoisonedIp('198.18.0.1'), isTrue);
+      expect(isPrivateOrPoisonedIp('198.18.34.56'), isTrue);
+      expect(isPrivateOrPoisonedIp('198.19.100.200'), isTrue);
+      expect(isPrivateOrPoisonedIp('198.20.0.1'), isFalse);
+    });
+
+    test('identifies RFC 1918 private ranges and CGNAT', () {
+      expect(isPrivateOrPoisonedIp('10.0.0.1'), isTrue);
+      expect(isPrivateOrPoisonedIp('10.255.255.254'), isTrue);
+      expect(isPrivateOrPoisonedIp('172.16.0.1'), isTrue);
+      expect(isPrivateOrPoisonedIp('172.31.255.255'), isTrue);
+      expect(isPrivateOrPoisonedIp('172.32.0.1'), isFalse);
+      expect(isPrivateOrPoisonedIp('192.168.1.1'), isTrue);
+      expect(isPrivateOrPoisonedIp('192.168.0.254'), isTrue);
+      expect(isPrivateOrPoisonedIp('100.64.0.1'), isTrue);
+      expect(isPrivateOrPoisonedIp('100.127.255.255'), isTrue);
+      expect(isPrivateOrPoisonedIp('100.128.0.1'), isFalse);
+      expect(isPrivateOrPoisonedIp('127.0.0.1'), isTrue);
+      expect(isPrivateOrPoisonedIp('169.254.1.1'), isTrue);
+    });
+
+    test('identifies Iranian government filtering sinkholes and IPv6', () {
+      expect(isPrivateOrPoisonedIp('185.88.153.235'), isTrue);
+      expect(isPrivateOrPoisonedIp('185.88.153.236'), isTrue);
+      expect(isPrivateOrPoisonedIp('185.88.153.1'), isFalse);
+      expect(isPrivateOrPoisonedIp('::1'), isTrue);
+      expect(isPrivateOrPoisonedIp('fc00::1'), isTrue);
+      expect(isPrivateOrPoisonedIp('fe80::1'), isTrue);
+    });
+
+    test('does not flag normal public IPs as poisoned', () {
+      expect(isPrivateOrPoisonedIp('1.1.1.1'), isFalse);
+      expect(isPrivateOrPoisonedIp('8.8.8.8'), isFalse);
+      expect(isPrivateOrPoisonedIp('142.250.180.14'), isFalse);
+      expect(isPrivateOrPoisonedIp('104.16.132.229'), isFalse);
+      expect(isPrivateOrPoisonedIp(null), isFalse);
+      expect(isPrivateOrPoisonedIp(''), isFalse);
+    });
+  });
+
+  group('ProbeCell Visual Border for Private / Poisoned IPs', () {
+    testWidgets('renders 4-sided yellow border when private/poisoned IP is returned', (tester) async {
+      const poisonedHit = Hit(
+        status: HitStatus.fail,
+        ms: 12,
+        detail: '10.10.34.36',
+        isPoisoned: true,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildTheme(compact: false),
+          home: const Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 100,
+                height: 60,
+                child: ProbeCell(
+                  label: 'youtube',
+                  hit: poisonedHit,
+                  sub: '10.10.34.36',
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Find the DecoratedBox in ProbeCell
+      final decoratedBoxes = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox));
+      bool foundYellowBorder = false;
+
+      for (final db in decoratedBoxes) {
+        final deco = db.decoration;
+        if (deco is BoxDecoration && deco.border is Border) {
+          final border = deco.border as Border;
+          if (border.top.color == kPoison &&
+              border.right.color == kPoison &&
+              border.bottom.color == kPoison &&
+              border.left.color == kPoison &&
+              border.top.width == 2.0) {
+            foundYellowBorder = true;
+            break;
+          }
+        }
+      }
+
+      expect(foundYellowBorder, isTrue, reason: 'ProbeCell should have 4-sided yellow border when poisoned');
+      expect(find.text('youtube'), findsOneWidget);
+      expect(find.text('10.10.34.36'), findsWidgets);
+    });
+
+    testWidgets('renders standard 1-side border when normal hit is returned', (tester) async {
+      const normalHit = Hit(
+        status: HitStatus.ok,
+        ms: 25,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildTheme(compact: false),
+          home: const Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 100,
+                height: 60,
+                child: ProbeCell(
+                  label: 'google',
+                  hit: normalHit,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final decoratedBoxes = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox));
+      bool has4SidedYellow = false;
+
+      for (final db in decoratedBoxes) {
+        final deco = db.decoration;
+        if (deco is BoxDecoration && deco.border is Border) {
+          final border = deco.border as Border;
+          if (border.top.color == kPoison) {
+            has4SidedYellow = true;
+          }
+        }
+      }
+
+      expect(has4SidedYellow, isFalse);
+      expect(find.text('google'), findsOneWidget);
+      expect(find.text('25ms'), findsOneWidget);
     });
   });
 }

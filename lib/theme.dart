@@ -21,6 +21,7 @@ const Color kOk = Color(0xFF7EBA88);
 const Color kTo = Color(0xFFC4A35A);
 const Color kFail = Color(0xFFC45C5C);
 const Color kLive = Color(0xFFF2F2F2);
+const Color kPoison = Color(0xFFFFD600);
 
 ThemeData buildTheme({required bool compact}) {
   const family = 'Poppins';

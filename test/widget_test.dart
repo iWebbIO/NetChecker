@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:netchecker/app.dart';
 import 'package:netchecker/probe/engine.dart';
+import 'package:netchecker/ui/settings_form.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -25,5 +26,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('HTTP timeout'), findsOneWidget);
+
+    // Scroll to and verify Updates section in settings
+    await tester.drag(find.byType(SettingsForm), const Offset(0, -400));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Updates'), findsOneWidget);
+    expect(find.text('Check for Updates'), findsOneWidget);
   });
 }

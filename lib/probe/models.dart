@@ -202,7 +202,16 @@ class ItemMetrics {
     String filterStatus;
     bool isClean = true;
 
-    if (phaseAnomaly != null && phaseAnomaly.isNotEmpty) {
+    final isPoisoned = (currentHit?.hasPrivateIp == true) ||
+        isPrivateOrPoisonedIp(currentHit?.detail) ||
+        isPrivateOrPoisonedIp(lastSample.detail) ||
+        (phaseAnomaly != null && phaseAnomaly.contains('Poisoning'));
+
+    if (isPoisoned) {
+      final ip = currentHit?.detail ?? lastSample.detail ?? 'Fake IP';
+      filterStatus = 'DNS Poisoning ($ip)';
+      isClean = false;
+    } else if (phaseAnomaly != null && phaseAnomaly.isNotEmpty) {
       filterStatus = phaseAnomaly;
       isClean = false;
     } else if (lastStatus == HitStatus.ok) {
@@ -361,25 +370,117 @@ class TracerouteResult {
   final String? error;
 }
 
+/// Checks whether an IP string is a private / non-routable address (RFC 1918,
+/// RFC 2544 benchmark/filtering 198.18.0.0/16 & 198.18.0.0/15, CGNAT 100.64.0.0/10,
+/// loopback 127.0.0.0/8, link-local, IPv6 ULA) or a known Iranian TIC DNS poisoning sinkhole.
+bool isPrivateOrPoisonedIp(String? raw) {
+  if (raw == null) return false;
+  var ipStr = raw.trim();
+  if (ipStr.isEmpty) return false;
+
+  // Strip CIDR prefix or port (e.g. "10.10.34.36/24" or "10.10.34.36:53")
+  if (ipStr.contains('/') && !ipStr.contains('://')) {
+    ipStr = ipStr.split('/').first.trim();
+  }
+  if (ipStr.contains(':') && !ipStr.contains('::')) {
+    final colonCount = ipStr.split(':').length - 1;
+    if (colonCount == 1 && ipStr.contains('.')) {
+      ipStr = ipStr.split(':').first.trim();
+    }
+  }
+
+  // Known Iranian TIC censorship / government filtering sinkholes
+  if (ipStr == '185.88.153.235' || ipStr == '185.88.153.236') {
+    return true;
+  }
+
+  // Parse IPv4
+  final parts = ipStr.split('.');
+  if (parts.length == 4) {
+    final a = int.tryParse(parts[0]);
+    final b = int.tryParse(parts[1]);
+    final c = int.tryParse(parts[2]);
+    final d = int.tryParse(parts[3]);
+    if (a != null &&
+        b != null &&
+        c != null &&
+        d != null &&
+        a >= 0 &&
+        a <= 255 &&
+        b >= 0 &&
+        b <= 255 &&
+        c >= 0 &&
+        c <= 255 &&
+        d >= 0 &&
+        d <= 255) {
+      // 0.0.0.0/8
+      if (a == 0) return true;
+      // 10.0.0.0/8 (RFC 1918, includes Iranian TIC 10.10.34.0/24, 10.10.34.34, 10.10.34.35, 10.10.34.36, etc.)
+      if (a == 10) return true;
+      // 100.64.0.0/10 (Carrier-Grade NAT)
+      if (a == 100 && (b >= 64 && b <= 127)) return true;
+      // 127.0.0.0/8 (Loopback)
+      if (a == 127) return true;
+      // 169.254.0.0/16 (Link-Local)
+      if (a == 169 && b == 254) return true;
+      // 172.16.0.0/12 (RFC 1918)
+      if (a == 172 && (b >= 16 && b <= 31)) return true;
+      // 192.168.0.0/16 (RFC 1918)
+      if (a == 192 && b == 168) return true;
+      // 198.18.0.0/15 & 198.18.0.0/16 (RFC 2544 / Iranian DPI & Filtering)
+      if (a == 198 && (b == 18 || b == 19)) return true;
+      return false;
+    }
+  }
+
+  // Parse IPv6
+  final lower = ipStr.toLowerCase();
+  if (lower == '::1' ||
+      lower == '::' ||
+      lower.startsWith('fe80:') ||
+      lower.startsWith('fc') ||
+      lower.startsWith('fd')) {
+    return true;
+  }
+
+  return false;
+}
+
 class Hit {
-  const Hit({this.status = HitStatus.idle, this.ms, this.detail, this.at});
+  const Hit({
+    this.status = HitStatus.idle,
+    this.ms,
+    this.detail,
+    this.at,
+    this.isPoisoned = false,
+  });
 
   final HitStatus status;
   final int? ms;
   final String? detail;
   final DateTime? at;
+  final bool isPoisoned;
 
   static const idle = Hit();
   static const checking = Hit(status: HitStatus.checking);
 
-  Hit copyWith({HitStatus? status, int? ms, String? detail, DateTime? at}) {
+  Hit copyWith({
+    HitStatus? status,
+    int? ms,
+    String? detail,
+    DateTime? at,
+    bool? isPoisoned,
+  }) {
     return Hit(
       status: status ?? this.status,
       ms: ms ?? this.ms,
       detail: detail ?? this.detail,
       at: at ?? this.at,
+      isPoisoned: isPoisoned ?? this.isPoisoned,
     );
   }
+
+  bool get hasPrivateIp => isPoisoned || isPrivateOrPoisonedIp(detail);
 
   String get readout {
     switch (status) {
