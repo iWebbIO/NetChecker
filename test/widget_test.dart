@@ -28,7 +28,7 @@ void main() {
     expect(find.text('HTTP timeout'), findsOneWidget);
 
     // Scroll to and verify Updates section in settings
-    await tester.drag(find.byType(SettingsForm), const Offset(0, -400));
+    await tester.drag(find.byType(SettingsForm), const Offset(0, -1200));
     await tester.pumpAndSettle();
 
     expect(find.text('Updates'), findsOneWidget);

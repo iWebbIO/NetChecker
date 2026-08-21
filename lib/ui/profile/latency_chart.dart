@@ -38,9 +38,9 @@ class _ItemLatencyChartState extends State<ItemLatencyChart> {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF09070E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0x1FFFFFFF), width: 1),
+        color: kCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kLine, width: 1),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -52,28 +52,30 @@ class _ItemLatencyChartState extends State<ItemLatencyChart> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 8,
-                    height: 8,
+                    width: 6,
+                    height: 6,
                     decoration: BoxDecoration(
                       color: widget.accentColor,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
                           color: widget.accentColor.withValues(alpha: 0.6),
-                          blurRadius: 6,
+                          blurRadius: 4,
                           spreadRadius: 1,
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
+                  const Text(
                     'PING HISTORY',
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: kPaper,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.8,
-                        ),
+                    style: TextStyle(
+                      fontFamily: 'Space Mono',
+                      color: kPaper,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ],
               ),
@@ -91,21 +93,19 @@ class _ItemLatencyChartState extends State<ItemLatencyChart> {
           if (samples.isEmpty)
             SizedBox(
               height: widget.height,
-              child: Center(
+              child: const Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.show_chart,
-                      color: kMute.withValues(alpha: 0.4),
-                      size: 36,
+                      Icons.show_chart_rounded,
+                      color: kSubtle,
+                      size: 32,
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       'Waiting for probe telemetry...',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: kMute,
-                          ),
+                      style: TextStyle(color: kMute, fontSize: 11),
                     ),
                   ],
                 ),
@@ -169,8 +169,9 @@ class _RangeSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0x14FFFFFF),
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFF18181B),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: kLine),
       ),
       padding: const EdgeInsets.all(2),
       child: Row(
@@ -215,17 +216,18 @@ class _RangeButton extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
-          color: active ? kPaper : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          color: active ? const Color(0xFF27272A) : Colors.transparent,
+          borderRadius: BorderRadius.circular(4),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         child: Text(
           label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: active ? kInk : kMute,
-                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                fontSize: 10,
-              ),
+          style: TextStyle(
+            fontFamily: 'Space Mono',
+            color: active ? kPaper : kMute,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            fontSize: 9.5,
+          ),
         ),
       ),
     );
@@ -241,43 +243,46 @@ class _ScrubTooltip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final timeStr =
-        '::';
-    final msStr = sample.ms != null ? 'ms' : sample.status.name;
+        '${sample.timestamp.hour.toString().padLeft(2, '0')}:${sample.timestamp.minute.toString().padLeft(2, '0')}:${sample.timestamp.second.toString().padLeft(2, '0')}';
+    final msStr = sample.ms != null ? '${sample.ms}ms' : sample.status.name;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0x28FFFFFF),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: accentColor.withValues(alpha: 0.4), width: 1),
+        color: const Color(0xFF18181B),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: kLine, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             timeStr,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: kMute,
-                  fontSize: 11,
-                ),
+            style: const TextStyle(
+              fontFamily: 'Space Mono',
+              color: kMute,
+              fontSize: 10,
+            ),
           ),
           const SizedBox(width: 8),
           Text(
             msStr,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: sample.status == HitStatus.ok ? accentColor : kFail,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
+            style: TextStyle(
+              fontFamily: 'Space Mono',
+              color: sample.status == HitStatus.ok ? accentColor : kFail,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
           ),
           if (sample.detail != null && sample.detail!.isNotEmpty) ...[
             const SizedBox(width: 8),
             Text(
-              '()',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: kMute,
-                    fontSize: 10,
-                  ),
+              '(${sample.detail})',
+              style: const TextStyle(
+                fontFamily: 'Space Mono',
+                color: kMute,
+                fontSize: 9.5,
+              ),
             ),
           ],
         ],

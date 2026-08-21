@@ -167,176 +167,302 @@ class _SettingsFormState extends State<SettingsForm> {
   Widget build(BuildContext context) {
     final nics = widget.engine.nics;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       children: [
-        Text('Timeouts', style: Theme.of(context).textTheme.titleSmall),
-        _MsSlider(
-          label: 'HTTP timeout',
-          value: _draft.httpTimeoutMs,
-          min: 500,
-          max: 15000,
-          onChanged: (v) => setState(() {
-            _draft = _draft.copyWith(httpTimeoutMs: v);
-          }),
-        ),
-        _MsSlider(
-          label: 'Delay between sites',
-          value: _draft.itemDelayMs,
-          min: 0,
-          max: 5000,
-          onChanged: (v) => setState(() {
-            _draft = _draft.copyWith(itemDelayMs: v);
-          }),
-        ),
-        _MsSlider(
-          label: 'DNS timeout',
-          value: _draft.dnsTimeoutMs,
-          min: 300,
-          max: 8000,
-          onChanged: (v) => setState(() {
-            _draft = _draft.copyWith(dnsTimeoutMs: v);
-          }),
-        ),
-        _MsSlider(
-          label: 'Delay between DNS',
-          value: _draft.dnsDelayMs,
-          min: 0,
-          max: 5000,
-          onChanged: (v) => setState(() {
-            _draft = _draft.copyWith(dnsDelayMs: v);
-          }),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _hunt,
-          decoration: const InputDecoration(
-            labelText: 'Hunt name',
-            hintText: 'youtube.com',
-          ),
-        ),
-        const SizedBox(height: 12),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Default top 30'),
-          subtitle: const Text('Sites commonly filtered in Iran'),
-          value: _draft.useDefaultDomains,
-          onChanged: (v) => setState(() {
-            _draft = _draft.copyWith(useDefaultDomains: v);
-          }),
-        ),
-        TextField(
-          controller: _extra,
-          minLines: 4,
-          maxLines: 8,
-          decoration: const InputDecoration(
-            labelText: 'Extra hosts',
-            hintText: 'one host per line',
-          ),
-        ),
-        if (widget.showWindowControls) ...[
-          const SizedBox(height: 12),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Always on top'),
-            subtitle: const Text('Corner instrument while you test'),
-            value: _draft.alwaysOnTop,
-            onChanged: (v) => setState(() {
-              _draft = _draft.copyWith(alwaysOnTop: v);
-            }),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Network interface',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          const SizedBox(height: 4),
-          DropdownButton<String>(
-            isExpanded: true,
-            value: nics.any((n) => n.id == _draft.nicId)
-                ? _draft.nicId
-                : NicChoice.any.id,
-            dropdownColor: const Color(0xFF0C0A10),
-            items: [
-              for (final n in nics)
-                DropdownMenuItem(value: n.id, child: Text(n.label)),
+        // 1. Targets & Hunting Section
+        _SectionCard(
+          icon: Icons.radar_rounded,
+          title: 'Targeting & DNS Hunt',
+          description: 'Configure DNS hunter query target and website catalog',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _hunt,
+                decoration: InputDecoration(
+                  labelText: 'DNS Hunt Target Host',
+                  hintText: 'e.g. youtube.com',
+                  prefixIcon: const Icon(Icons.travel_explore_rounded, size: 16),
+                  helperText: 'Domain resolved by all DNS servers to detect poisoning',
+                  helperStyle: TextStyle(color: kMute.withValues(alpha: 0.7), fontSize: 10),
+                ),
+              ),
+              const SizedBox(height: 14),
+              _SwitchCard(
+                title: 'Default Top 30 Domains',
+                subtitle: 'Include high-traffic websites commonly filtered in Iran',
+                value: _draft.useDefaultDomains,
+                onChanged: (v) => setState(() {
+                  _draft = _draft.copyWith(useDefaultDomains: v);
+                }),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _extra,
+                minLines: 3,
+                maxLines: 6,
+                style: const TextStyle(fontFamily: 'Space Mono', fontSize: 12),
+                decoration: InputDecoration(
+                  labelText: 'Custom Target Domains',
+                  hintText: 'example.com\ncloudflare.com',
+                  helperText: 'One host or domain per line',
+                  helperStyle: TextStyle(color: kMute.withValues(alpha: 0.7), fontSize: 10),
+                ),
+              ),
             ],
-            onChanged: (id) {
-              if (id == null) return;
-              setState(() => _draft = _draft.copyWith(nicId: id));
-            },
-          ),
-        ],
-        const SizedBox(height: 12),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Privacy Mode'),
-          subtitle: const Text('Masks hostnames and IPs on the homescreen'),
-          value: _draft.privacyMode,
-          onChanged: (v) => setState(() {
-            _draft = _draft.copyWith(privacyMode: v);
-          }),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Export Format',
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
-        const SizedBox(height: 4),
-        DropdownButton<String>(
-          isExpanded: true,
-          value: _draft.exportFormat,
-          dropdownColor: const Color(0xFF0C0A10),
-          items: const [
-            DropdownMenuItem(value: 'markdown', child: Text('Markdown Table')),
-            DropdownMenuItem(value: 'csv', child: Text('CSV Spreadsheet')),
-            DropdownMenuItem(value: 'json', child: Text('JSON Report')),
-            DropdownMenuItem(value: 'plaintext', child: Text('Plaintext Summary')),
-          ],
-          onChanged: (fmt) {
-            if (fmt == null) return;
-            setState(() => _draft = _draft.copyWith(exportFormat: fmt));
-          },
-        ),
-        const SizedBox(height: 16),
-        const Divider(height: 1),
-        const SizedBox(height: 16),
-        Text('Updates', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 6),
-        Text(
-          'NetChecker v$_appVersion',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: kMute),
-        ),
-        const SizedBox(height: 4),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Auto-check for updates'),
-          subtitle: const Text('Checks GitHub releases for new versions'),
-          value: _draft.autoCheckUpdates,
-          onChanged: (v) => setState(() {
-            _draft = _draft.copyWith(autoCheckUpdates: v);
-          }),
-        ),
-        const SizedBox(height: 8),
-        _buildUpdateStatusCard(context),
-        const SizedBox(height: 20),
-        const Divider(height: 1),
-        const SizedBox(height: 16),
-        OutlinedButton.icon(
-          onPressed: () {
-            widget.engine.resetAllStats();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('All statistics and telemetry reset')),
-            );
-          },
-          icon: const Icon(Icons.refresh, size: 16),
-          label: const Text('Reset All Statistics'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFFEF4444),
-            side: const BorderSide(color: Color(0x33EF4444)),
           ),
         ),
-        const SizedBox(height: 20),
-        FilledButton(onPressed: _save, child: const Text('Apply')),
+        const SizedBox(height: 16),
+
+        // 2. Probe Timing Section
+        _SectionCard(
+          icon: Icons.timer_outlined,
+          title: 'Probe Timers & Network',
+          description: 'Request timeouts and delay intervals between probes',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _MsSlider(
+                label: 'HTTP timeout',
+                value: _draft.httpTimeoutMs,
+                min: 500,
+                max: 15000,
+                onChanged: (v) => setState(() {
+                  _draft = _draft.copyWith(httpTimeoutMs: v);
+                }),
+              ),
+              const SizedBox(height: 8),
+              _MsSlider(
+                label: 'Delay Between Site Probes',
+                value: _draft.itemDelayMs,
+                min: 0,
+                max: 5000,
+                onChanged: (v) => setState(() {
+                  _draft = _draft.copyWith(itemDelayMs: v);
+                }),
+              ),
+              const SizedBox(height: 8),
+              _MsSlider(
+                label: 'DNS Query Timeout',
+                value: _draft.dnsTimeoutMs,
+                min: 300,
+                max: 8000,
+                onChanged: (v) => setState(() {
+                  _draft = _draft.copyWith(dnsTimeoutMs: v);
+                }),
+              ),
+              const SizedBox(height: 8),
+              _MsSlider(
+                label: 'Delay Between DNS Probes',
+                value: _draft.dnsDelayMs,
+                min: 0,
+                max: 5000,
+                onChanged: (v) => setState(() {
+                  _draft = _draft.copyWith(dnsDelayMs: v);
+                }),
+              ),
+              if (widget.showWindowControls && nics.length > 1) ...[
+                const SizedBox(height: 14),
+                Text(
+                  'Network Interface',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: kPaper,
+                      ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF121215),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: kLine),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: nics.any((n) => n.id == _draft.nicId)
+                          ? _draft.nicId
+                          : NicChoice.any.id,
+                      dropdownColor: const Color(0xFF18181B),
+                      items: [
+                        for (final n in nics)
+                          DropdownMenuItem(
+                            value: n.id,
+                            child: Text(
+                              n.label,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                      ],
+                      onChanged: (id) {
+                        if (id == null) return;
+                        setState(() => _draft = _draft.copyWith(nicId: id));
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // 3. Interface & Privacy Section
+        _SectionCard(
+          icon: Icons.shield_outlined,
+          title: 'Display & Privacy',
+          description: 'Telemetry privacy masking and report formats',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SwitchCard(
+                title: 'Privacy Mode',
+                subtitle: 'Mask hostnames and IPs on the homescreen grid',
+                value: _draft.privacyMode,
+                onChanged: (v) => setState(() {
+                  _draft = _draft.copyWith(privacyMode: v);
+                }),
+              ),
+              if (widget.showWindowControls) ...[
+                const SizedBox(height: 12),
+                _SwitchCard(
+                  title: 'Always on Top',
+                  subtitle: 'Keep a compact corner instrument visible while testing',
+                  value: _draft.alwaysOnTop,
+                  onChanged: (v) => setState(() {
+                    _draft = _draft.copyWith(alwaysOnTop: v);
+                  }),
+                ),
+              ],
+              const SizedBox(height: 14),
+              Text(
+                'Report Export Format',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: kPaper,
+                    ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF121215),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: kLine),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: _draft.exportFormat,
+                    dropdownColor: const Color(0xFF18181B),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'markdown',
+                        child: Text('Markdown Table (.md)', style: TextStyle(fontSize: 12)),
+                      ),
+                      DropdownMenuItem(
+                        value: 'csv',
+                        child: Text('CSV Spreadsheet (.csv)', style: TextStyle(fontSize: 12)),
+                      ),
+                      DropdownMenuItem(
+                        value: 'json',
+                        child: Text('JSON Machine-Readable (.json)', style: TextStyle(fontSize: 12)),
+                      ),
+                      DropdownMenuItem(
+                        value: 'plaintext',
+                        child: Text('Plaintext Summary (.txt)', style: TextStyle(fontSize: 12)),
+                      ),
+                    ],
+                    onChanged: (fmt) {
+                      if (fmt == null) return;
+                      setState(() => _draft = _draft.copyWith(exportFormat: fmt));
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // 4. Updates & Maintenance Section
+        _SectionCard(
+          icon: Icons.system_update_alt_rounded,
+          title: 'Updates',
+          description: 'Version management and telemetry reset',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'NetChecker',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: kPaper,
+                        ),
+                      ),
+                      Text(
+                        'Version v$_appVersion',
+                        style: const TextStyle(
+                          fontFamily: 'Space Mono',
+                          fontSize: 11,
+                          color: kMute,
+                        ),
+                      ),
+                    ],
+                  ),
+                  _buildUpdateStatusCard(context),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _SwitchCard(
+                title: 'Auto-Check for Updates',
+                subtitle: 'Automatically check GitHub releases on startup',
+                value: _draft.autoCheckUpdates,
+                onChanged: (v) => setState(() {
+                  _draft = _draft.copyWith(autoCheckUpdates: v);
+                }),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () {
+                  widget.engine.resetAllStats();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('All statistics and telemetry reset')),
+                  );
+                },
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: const Text('Reset All Statistics'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: kFail,
+                  side: BorderSide(color: kFail.withValues(alpha: 0.3)),
+                  backgroundColor: kFail.withValues(alpha: 0.05),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // 5. Apply Button
+        FilledButton.icon(
+          onPressed: _save,
+          icon: const Icon(Icons.check_rounded, size: 16),
+          label: const Text('Apply Changes'),
+          style: FilledButton.styleFrom(
+            backgroundColor: kPaper,
+            foregroundColor: kInk,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+          ),
+        ),
       ],
     );
   }
@@ -346,13 +472,14 @@ class _SettingsFormState extends State<SettingsForm> {
 
     if (_checkingUpdate) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFF09070C),
+          color: const Color(0xFF18181B),
           border: Border.all(color: kLine),
           borderRadius: BorderRadius.circular(8),
         ),
         child: const Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
               width: 14,
@@ -361,8 +488,8 @@ class _SettingsFormState extends State<SettingsForm> {
             ),
             SizedBox(width: 10),
             Text(
-              'Checking GitHub releases...',
-              style: TextStyle(fontSize: 12, color: kPaper),
+              'Checking releases...',
+              style: TextStyle(fontSize: 11, color: kPaper),
             ),
           ],
         ),
@@ -376,7 +503,7 @@ class _SettingsFormState extends State<SettingsForm> {
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF09070C),
+            color: const Color(0xFF18181B),
             border: Border.all(color: kOk.withValues(alpha: 0.4)),
             borderRadius: BorderRadius.circular(8),
           ),
@@ -389,11 +516,11 @@ class _SettingsFormState extends State<SettingsForm> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'New release: ${rel.tagName}',
+                      'New: ${rel.tagName}',
                       style: const TextStyle(
                         fontFamily: 'Space Mono',
                         fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                        fontSize: 11.5,
                         color: kOk,
                       ),
                     ),
@@ -404,21 +531,25 @@ class _SettingsFormState extends State<SettingsForm> {
                 const SizedBox(height: 4),
                 Text(
                   rel.name,
-                  style: const TextStyle(fontSize: 12, color: kPaper),
+                  style: const TextStyle(fontSize: 11, color: kPaper),
                 ),
               ],
               if (rel.body.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Container(
-                  constraints: const BoxConstraints(maxHeight: 90),
+                  constraints: const BoxConstraints(maxHeight: 80),
                   padding: const EdgeInsets.all(6),
-                  color: const Color(0x33000000),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF121215),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: kLine),
+                  ),
                   child: SingleChildScrollView(
                     child: Text(
                       rel.body.trim(),
                       style: const TextStyle(
                         fontFamily: 'Space Mono',
-                        fontSize: 10,
+                        fontSize: 9.5,
                         color: kMute,
                       ),
                     ),
@@ -458,21 +589,21 @@ class _SettingsFormState extends State<SettingsForm> {
                       FilledButton.icon(
                         onPressed: () => _downloadAndInstall(rel),
                         icon: const Icon(Icons.download, size: 14),
-                        label: const Text('Download APK & Install'),
+                        label: const Text('Install APK'),
                         style: FilledButton.styleFrom(
                           backgroundColor: kOk,
                           foregroundColor: kInk,
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          minimumSize: const Size(36, 32),
                         ),
                       ),
                     OutlinedButton.icon(
                       onPressed: () => UpdateService.openUrl(rel.htmlUrl),
                       icon: const Icon(Icons.open_in_new, size: 14),
-                      label: const Text('View on GitHub'),
+                      label: const Text('GitHub'),
                       style: OutlinedButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        minimumSize: const Size(36, 32),
                       ),
                     ),
                   ],
@@ -483,51 +614,55 @@ class _SettingsFormState extends State<SettingsForm> {
         );
       } else if (res.errorMessage != null) {
         return Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: const Color(0xFF09070C),
+            color: const Color(0xFF18181B),
             border: Border.all(color: kFail.withValues(alpha: 0.3)),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 16, color: kFail),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  res.errorMessage!,
-                  style: const TextStyle(fontSize: 11, color: kMute),
-                ),
+              const Icon(Icons.error_outline, size: 14, color: kFail),
+              const SizedBox(width: 6),
+              Text(
+                'Update check failed',
+                style: const TextStyle(fontSize: 11, color: kMute),
               ),
               IconButton(
-                icon: const Icon(Icons.refresh, size: 14),
+                icon: const Icon(Icons.refresh, size: 13),
                 onPressed: _checkUpdate,
                 tooltip: 'Retry',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
               ),
             ],
           ),
         );
       } else {
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: const Color(0xFF09070C),
+            color: const Color(0xFF18181B),
             border: Border.all(color: kLine),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.check_circle_outline, size: 16, color: kOk),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Up to date (${res.currentVersion})',
-                  style: const TextStyle(fontSize: 12, color: kPaper),
-                ),
+              const Icon(Icons.check_circle_outline, size: 13, color: kOk),
+              const SizedBox(width: 4),
+              const Text(
+                'Up to date',
+                style: TextStyle(fontSize: 11, color: kPaper),
               ),
-              TextButton(
-                onPressed: _checkUpdate,
-                child: const Text('Check again', style: TextStyle(fontSize: 11)),
+              const SizedBox(width: 4),
+              InkWell(
+                onTap: _checkUpdate,
+                child: const Text(
+                  'Check',
+                  style: TextStyle(fontSize: 10.5, color: kMute, decoration: TextDecoration.underline),
+                ),
               ),
             ],
           ),
@@ -537,11 +672,127 @@ class _SettingsFormState extends State<SettingsForm> {
 
     return OutlinedButton.icon(
       onPressed: _checkUpdate,
-      icon: const Icon(Icons.sync, size: 16),
+      icon: const Icon(Icons.sync, size: 13),
       label: const Text('Check for Updates'),
       style: OutlinedButton.styleFrom(
-        foregroundColor: kPaper,
-        side: const BorderSide(color: kLine),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        minimumSize: const Size(36, 32),
+      ),
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.child,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: kCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kLine, width: 1),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: kPaper),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13.5,
+                  letterSpacing: -0.2,
+                  color: kPaper,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            description,
+            style: const TextStyle(
+              fontSize: 11,
+              color: kMute,
+            ),
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _SwitchCard extends StatelessWidget {
+  const _SwitchCard({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF18181B),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: kLine),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12.5,
+                    color: kPaper,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    color: kMute,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Transform.scale(
+            scale: 0.8,
+            child: Switch(
+              value: value,
+              onChanged: onChanged,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -567,14 +818,31 @@ class _MsSlider extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 10),
-          child: Row(
-            children: [
-              Expanded(child: Text(label)),
-              Text('${value}ms', style: Theme.of(context).textTheme.labelSmall),
-            ],
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11.5, color: kPaper),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFF18181B),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: kLine),
+              ),
+              child: Text(
+                '${value}ms',
+                style: const TextStyle(
+                  fontFamily: 'Space Mono',
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: kPaper,
+                ),
+              ),
+            ),
+          ],
         ),
         Slider(
           value: value.toDouble().clamp(min.toDouble(), max.toDouble()),

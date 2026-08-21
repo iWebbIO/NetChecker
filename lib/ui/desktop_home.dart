@@ -28,26 +28,53 @@ class DesktopHome extends StatelessWidget {
         return Align(
           alignment: Alignment.centerRight,
           child: Material(
-            color: const Color(0xFF0C0A10),
-            child: SizedBox(
-              width: 360,
+            color: const Color(0xFF0F0F12),
+            child: Container(
+              width: 380,
               height: MediaQuery.sizeOf(ctx).height,
+              decoration: const BoxDecoration(
+                border: Border(left: BorderSide(color: kLine, width: 1)),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            'Settings',
-                            style: Theme.of(ctx).textTheme.titleMedium,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Settings',
+                                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                    ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Configure probe timers, targeting, and exports',
+                                style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                                      color: kMute,
+                                      fontSize: 11,
+                                    ),
+                              ),
+                            ],
                           ),
                         ),
                         IconButton(
                           onPressed: () => Navigator.pop(ctx),
-                          icon: const Icon(Icons.close, size: 18),
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          style: IconButton.styleFrom(
+                            backgroundColor: const Color(0xFF18181B),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                              side: const BorderSide(color: kLine),
+                            ),
+                            padding: const EdgeInsets.all(6),
+                          ),
                         ),
                       ],
                     ),

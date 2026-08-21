@@ -113,7 +113,7 @@ class _RouteMapPageState extends State<RouteMapPage> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: kPaper, size: 20),
+          icon: const Icon(Icons.arrow_back_rounded, color: kPaper, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Column(
@@ -123,14 +123,15 @@ class _RouteMapPageState extends State<RouteMapPage> {
               'ROUTE MAP · TRACEROUTE',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: kMute,
-                    letterSpacing: 1.2,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w600,
                   ),
             ),
             Text(
               widget.title ?? widget.target,
               style: const TextStyle(
+                fontFamily: 'Poppins',
                 color: kPaper,
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
@@ -140,17 +141,34 @@ class _RouteMapPageState extends State<RouteMapPage> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.copy, color: kMute, size: 18),
+            icon: const Icon(Icons.copy_rounded, color: kPaper, size: 16),
             tooltip: 'Copy Route',
+            style: IconButton.styleFrom(
+              backgroundColor: const Color(0xFF18181B),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+                side: const BorderSide(color: kLine),
+              ),
+              padding: const EdgeInsets.all(8),
+            ),
             onPressed: hops.isNotEmpty ? _copyTraceReport : null,
           ),
+          const SizedBox(width: 4),
           IconButton(
             icon: Icon(
-              _isTracing ? Icons.stop : Icons.refresh,
+              _isTracing ? Icons.stop_rounded : Icons.refresh_rounded,
               color: _isTracing ? kFail : kOk,
-              size: 20,
+              size: 18,
             ),
             tooltip: _isTracing ? 'Stop Trace' : 'Retrace',
+            style: IconButton.styleFrom(
+              backgroundColor: const Color(0xFF18181B),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+                side: const BorderSide(color: kLine),
+              ),
+              padding: const EdgeInsets.all(8),
+            ),
             onPressed: () {
               if (_isTracing) {
                 _sub?.cancel();
@@ -160,11 +178,11 @@ class _RouteMapPageState extends State<RouteMapPage> {
               }
             },
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(color: kLine, height: 1),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: kLine),
         ),
       ),
       body: Column(
@@ -172,18 +190,28 @@ class _RouteMapPageState extends State<RouteMapPage> {
           // Status Header Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            color: const Color(0xFF0A0710),
+            decoration: const BoxDecoration(
+              color: Color(0xFF121215),
+              border: Border(bottom: BorderSide(color: kLine, width: 1)),
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
                     Container(
-                      width: 8,
-                      height: 8,
+                      width: 6,
+                      height: 6,
                       decoration: BoxDecoration(
                         color: _isTracing ? kTo : (isComplete ? kOk : kMute),
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: (_isTracing ? kTo : (isComplete ? kOk : kMute)).withValues(alpha: 0.6),
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -208,7 +236,6 @@ class _RouteMapPageState extends State<RouteMapPage> {
               ],
             ),
           ),
-          const Divider(height: 1, color: kLine),
 
           // Hop List
           Expanded(
@@ -218,17 +245,17 @@ class _RouteMapPageState extends State<RouteMapPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const SizedBox(
-                          width: 24,
-                          height: 24,
+                          width: 22,
+                          height: 22,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             color: kOk,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
                         Text(
                           'Tracing route to ${widget.target}...',
-                          style: const TextStyle(color: kMute, fontSize: 12),
+                          style: const TextStyle(color: kMute, fontSize: 11.5),
                         ),
                       ],
                     ),
@@ -271,8 +298,9 @@ class _HopTile extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0D0A14),
-        border: Border.all(color: kLine),
+        color: kCard,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: kLine, width: 1),
       ),
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -284,14 +312,15 @@ class _HopTile extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: kLine,
-                  borderRadius: BorderRadius.circular(2),
+                  color: const Color(0xFF18181B),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: kLine),
                 ),
                 child: Text(
                   '#${hop.ttl}',
                   style: const TextStyle(
                     fontFamily: 'Space Mono',
-                    fontSize: 10,
+                    fontSize: 9.5,
                     fontWeight: FontWeight.bold,
                     color: kPaper,
                   ),
@@ -314,7 +343,7 @@ class _HopTile extends StatelessWidget {
                   hop.displayHost,
                   style: TextStyle(
                     fontFamily: 'Space Mono',
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                     color: hasResp ? kPaper : kMute,
                   ),
@@ -324,17 +353,17 @@ class _HopTile extends StatelessWidget {
 
               // Latency Pill
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.15),
-                  border: Border.all(color: statusColor.withValues(alpha: 0.5)),
-                  borderRadius: BorderRadius.circular(12),
+                  color: statusColor.withValues(alpha: 0.12),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   rtt != null ? '${rtt}ms' : (hop.lossPercent >= 100 ? 'Timed out' : '* * *'),
                   style: TextStyle(
                     fontFamily: 'Space Mono',
-                    fontSize: 11,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.bold,
                     color: statusColor,
                   ),
@@ -347,7 +376,7 @@ class _HopTile extends StatelessWidget {
           if (hop.ip != null || hop.asn != null || hop.geo != null) ...[
             const SizedBox(height: 8),
             Wrap(
-              spacing: 8,
+              spacing: 6,
               runSpacing: 4,
               children: [
                 if (hop.ip != null && hop.hostname != null && hop.ip != hop.hostname)
@@ -384,15 +413,16 @@ class _MetaChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: const Color(0xFF18181B),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Text(
         label,
         style: TextStyle(
           fontFamily: 'Space Mono',
           fontSize: 9,
-          color: color,
+          color: color == kMute ? kPaper : color,
         ),
       ),
     );

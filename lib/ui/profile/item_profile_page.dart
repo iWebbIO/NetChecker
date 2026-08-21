@@ -189,44 +189,63 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
         final accent = _getStatusAccent(currentHit.status, metrics.isClean);
 
         return Scaffold(
-          backgroundColor: const Color(0xFF040207),
+          backgroundColor: kInk,
           appBar: AppBar(
-            backgroundColor: const Color(0xFF040207),
+            backgroundColor: kInk,
+            surfaceTintColor: Colors.transparent,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+              icon: const Icon(Icons.arrow_back_rounded, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
             title: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0x14FFFFFF),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0x28FFFFFF)),
+                color: const Color(0xFF18181B),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: kLine),
               ),
               child: Text(
                 widget.targetInfo.categoryLabel,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: kPaper,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.8,
-                      fontSize: 10,
-                    ),
+                style: const TextStyle(
+                  fontFamily: 'Space Mono',
+                  color: kPaper,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 10,
+                  letterSpacing: 0.5,
+                ),
               ),
             ),
             actions: [
               IconButton(
                 tooltip: 'Trace Route',
                 icon: const Icon(Icons.alt_route_rounded, size: 18),
+                style: IconButton.styleFrom(
+                  backgroundColor: const Color(0xFF18181B),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    side: const BorderSide(color: kLine),
+                  ),
+                  padding: const EdgeInsets.all(8),
+                ),
                 onPressed: () => RouteMapPage.open(
                   context,
                   target: widget.targetInfo.hostOrIp ?? widget.targetInfo.id,
                   title: widget.targetInfo.title,
                 ),
               ),
+              const SizedBox(width: 4),
               IconButton(
                 tooltip: 'Reset Stats',
                 icon: const Icon(Icons.refresh_rounded, size: 18),
+                style: IconButton.styleFrom(
+                  backgroundColor: const Color(0xFF18181B),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    side: const BorderSide(color: kLine),
+                  ),
+                  padding: const EdgeInsets.all(8),
+                ),
                 onPressed: () {
                   widget.engine.resetStats(widget.targetInfo.id);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -234,16 +253,30 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                   );
                 },
               ),
+              const SizedBox(width: 4),
               IconButton(
                 tooltip: 'Copy Report',
                 icon: const Icon(Icons.copy_rounded, size: 18),
+                style: IconButton.styleFrom(
+                  backgroundColor: const Color(0xFF18181B),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    side: const BorderSide(color: kLine),
+                  ),
+                  padding: const EdgeInsets.all(8),
+                ),
                 onPressed: () => _copyReport(metrics, samples),
               ),
+              const SizedBox(width: 12),
             ],
+            bottom: const PreferredSize(
+              preferredSize: Size.fromHeight(1),
+              child: Divider(height: 1, color: kLine),
+            ),
           ),
           body: SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -263,40 +296,46 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                       title: widget.targetInfo.title,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
                   // 2. About This Item Card
                   _AboutCard(
                     targetInfo: widget.targetInfo,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
                   // 3. 4-Card Stats Grid
                   _KpiMetricGrid(metrics: metrics, accentColor: accent),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
-                  // 4. Chart / Histogram Switcher & Visualization
+                  // 4. Chart / Histogram Switcher & Visualization (Segmented Tabs)
                   Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0D0A14),
+                      color: const Color(0xFF18181B),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: kLine),
                     ),
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(3),
                     child: Row(
                       children: [
                         Expanded(
                           child: InkWell(
                             onTap: () => setState(() => _chartTab = 0),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              color: _chartTab == 0 ? const Color(0x1AFFFFFF) : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: const EdgeInsets.symmetric(vertical: 7),
+                              decoration: BoxDecoration(
+                                color: _chartTab == 0 ? const Color(0xFF27272A) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
                               child: Center(
                                 child: Text(
                                   'PING HISTORY',
                                   style: TextStyle(
                                     fontFamily: 'Space Mono',
                                     fontSize: 10,
-                                    fontWeight: _chartTab == 0 ? FontWeight.bold : FontWeight.normal,
+                                    fontWeight: _chartTab == 0 ? FontWeight.w700 : FontWeight.w500,
                                     color: _chartTab == 0 ? kPaper : kMute,
                                   ),
                                 ),
@@ -307,16 +346,21 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                         Expanded(
                           child: InkWell(
                             onTap: () => setState(() => _chartTab = 1),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              color: _chartTab == 1 ? const Color(0x1AFFFFFF) : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: const EdgeInsets.symmetric(vertical: 7),
+                              decoration: BoxDecoration(
+                                color: _chartTab == 1 ? const Color(0xFF27272A) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
                               child: Center(
                                 child: Text(
                                   'FREQUENCY HISTOGRAM',
                                   style: TextStyle(
                                     fontFamily: 'Space Mono',
                                     fontSize: 10,
-                                    fontWeight: _chartTab == 1 ? FontWeight.bold : FontWeight.normal,
+                                    fontWeight: _chartTab == 1 ? FontWeight.w700 : FontWeight.w500,
                                     color: _chartTab == 1 ? kPaper : kMute,
                                   ),
                                 ),
@@ -327,7 +371,7 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   if (_chartTab == 0)
                     ItemLatencyChart(
                       samples: samples,
@@ -339,7 +383,7 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                       samples: samples,
                       accentColor: accent,
                     ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
                   // 5. Connection Steps Breakdown
                   ConnectionWaterfallCard(
@@ -348,7 +392,7 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                     isProbing: _isProbing,
                     onRunDeepProbe: () => _triggerPing(),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
                   // 6. Details Table
                   _DetailsCard(
@@ -357,7 +401,7 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                     phase: _latestPhase,
                     metrics: metrics,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
                   // 7. Recent Pings Log
                   _RecentAuditLog(samples: samples, accentColor: accent),
@@ -445,21 +489,11 @@ class _HeroBanner extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0B0912),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: accentColor.withValues(alpha: 0.35),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: accentColor.withValues(alpha: 0.12),
-            blurRadius: 20,
-            spreadRadius: 2,
-          ),
-        ],
+        color: kCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kLine, width: 1),
       ),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -468,21 +502,14 @@ class _HeroBanner extends StatelessWidget {
             children: [
               // Monogram Badge
               Container(
-                width: 52,
-                height: 52,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      accentColor.withValues(alpha: 0.35),
-                      const Color(0x08FFFFFF),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
+                  color: const Color(0xFF18181B),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: accentColor.withValues(alpha: 0.6),
-                    width: 1.5,
+                    color: accentColor.withValues(alpha: 0.5),
+                    width: 1.2,
                   ),
                 ),
                 child: Center(
@@ -491,7 +518,7 @@ class _HeroBanner extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: 'Space Mono',
                       fontWeight: FontWeight.w700,
-                      fontSize: tag.length > 3 ? 11 : (tag.length > 2 ? 14 : 17),
+                      fontSize: tag.length > 3 ? 11 : (tag.length > 2 ? 13 : 16),
                       color: accentColor,
                     ),
                   ),
@@ -509,17 +536,18 @@ class _HeroBanner extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: kPaper,
-                            fontSize: 18,
+                            fontSize: 17,
                             height: 1.2,
                           ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       targetInfo.subtitle ?? targetInfo.id,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: kMute,
-                            fontSize: 12,
-                          ),
+                      style: const TextStyle(
+                        fontFamily: 'Space Mono',
+                        color: kMute,
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
@@ -530,12 +558,12 @@ class _HeroBanner extends StatelessWidget {
 
           // Status Badge Pill
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(30),
+              color: accentColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(6),
               border: Border.all(
-                color: accentColor.withValues(alpha: 0.4),
+                color: accentColor.withValues(alpha: 0.3),
                 width: 1,
               ),
             ),
@@ -543,78 +571,82 @@ class _HeroBanner extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _PulsingDot(color: accentColor),
-                const SizedBox(width: 8),
+                const SizedBox(width: 7),
                 Text(
                   statusText,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: accentColor,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.6,
-                      ),
+                  style: TextStyle(
+                    fontFamily: 'Space Mono',
+                    color: accentColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
           // Primary Actions
           Row(
             children: [
               Expanded(
-                child: ElevatedButton.icon(
+                child: FilledButton.icon(
                   onPressed: isProbing ? null : onPingNow,
                   icon: isProbing
                       ? const SizedBox(
-                          width: 16,
-                          height: 16,
+                          width: 14,
+                          height: 14,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             color: kInk,
                           ),
                         )
-                      : const Icon(Icons.refresh_rounded, size: 18),
+                      : const Icon(Icons.refresh_rounded, size: 16),
                   label: Text(
                     isProbing ? 'Pinging...' : 'Ping Now',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
                   ),
-                  style: ElevatedButton.styleFrom(
+                  style: FilledButton.styleFrom(
                     backgroundColor: kPaper,
                     foregroundColor: kInk,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    minimumSize: const Size(40, 38),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               OutlinedButton.icon(
                 onPressed: onTraceRoute,
-                icon: const Icon(Icons.alt_route_rounded, size: 16),
-                label: const Text('Trace'),
+                icon: const Icon(Icons.alt_route_rounded, size: 15),
+                label: const Text('Trace', style: TextStyle(fontSize: 12)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: kPaper,
-                  side: const BorderSide(color: Color(0x28FFFFFF)),
+                  side: const BorderSide(color: kLine),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  minimumSize: const Size(40, 38),
                 ),
               ),
               const SizedBox(width: 8),
               InkWell(
                 onTap: () => onToggleLive(!liveMonitor),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
                 child: Container(
+                  height: 38,
                   decoration: BoxDecoration(
                     color: liveMonitor
                         ? const Color(0x1A10B981)
-                        : const Color(0x14FFFFFF),
-                    borderRadius: BorderRadius.circular(12),
+                        : const Color(0xFF18181B),
+                    borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: liveMonitor
-                          ? const Color(0xFF10B981).withValues(alpha: 0.5)
-                          : const Color(0x1AFFFFFF),
+                          ? const Color(0xFF10B981).withValues(alpha: 0.4)
+                          : kLine,
                     ),
                   ),
                   padding: const EdgeInsets.only(left: 10, right: 2),
@@ -623,19 +655,20 @@ class _HeroBanner extends StatelessWidget {
                     children: [
                       Text(
                         'Auto',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: liveMonitor
-                                  ? const Color(0xFF10B981)
-                                  : kPaper,
-                              fontSize: 11,
-                              fontWeight: liveMonitor
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
-                            ),
+                        style: TextStyle(
+                          fontFamily: 'Space Mono',
+                          color: liveMonitor
+                              ? const Color(0xFF10B981)
+                              : kPaper,
+                          fontSize: 11,
+                          fontWeight: liveMonitor
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                        ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 2),
                       Transform.scale(
-                        scale: 0.72,
+                        scale: 0.7,
                         child: Switch(
                           value: liveMonitor,
                           onChanged: onToggleLive,
@@ -671,9 +704,9 @@ class _AboutCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF09070E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0x24FFFFFF), width: 1),
+        color: kCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kLine, width: 1),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -684,16 +717,18 @@ class _AboutCard extends StatelessWidget {
               const Icon(
                 Icons.info_outline_rounded,
                 color: Color(0xFF06B6D4),
-                size: 18,
+                size: 16,
               ),
               const SizedBox(width: 8),
               Text(
                 'ABOUT THIS ITEM',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: kPaper,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.8,
-                    ),
+                style: const TextStyle(
+                  fontFamily: 'Space Mono',
+                  color: kPaper,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  letterSpacing: 0.5,
+                ),
               ),
             ],
           ),
@@ -703,18 +738,26 @@ class _AboutCard extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: kPaper.withValues(alpha: 0.9),
                   fontSize: 12,
-                  height: 1.4,
+                  height: 1.45,
                 ),
           ),
           if (whyItMatters != null && whyItMatters.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(
-              whyItMatters,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: kMute,
-                    fontSize: 11.5,
-                    height: 1.35,
-                  ),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF18181B),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: kLine),
+              ),
+              child: Text(
+                whyItMatters,
+                style: const TextStyle(
+                  color: kMute,
+                  fontSize: 11,
+                  height: 1.4,
+                ),
+              ),
             ),
           ],
         ],
@@ -766,18 +809,18 @@ class _PulsingDotState extends State<_PulsingDot>
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (context, _) {
-        final scale = 1.0 + (_ctrl.value * 0.35);
-        final opacity = 0.4 + (_ctrl.value * 0.6);
+        final scale = 1.0 + (_ctrl.value * 0.3);
+        final opacity = 0.5 + (_ctrl.value * 0.5);
         return Container(
-          width: 8 * scale,
-          height: 8 * scale,
+          width: 7 * scale,
+          height: 7 * scale,
           decoration: BoxDecoration(
             color: widget.color.withValues(alpha: opacity),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: widget.color.withValues(alpha: 0.8),
-                blurRadius: 6 * scale,
+                color: widget.color.withValues(alpha: 0.6),
+                blurRadius: 4 * scale,
                 spreadRadius: 1 * scale,
               ),
             ],
@@ -877,9 +920,9 @@ class _KpiCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF09070E),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0x14FFFFFF), width: 1),
+        color: kCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kLine, width: 1),
       ),
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -894,15 +937,16 @@ class _KpiCard extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: kMute,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 9.5,
-                        letterSpacing: 0.5,
-                      ),
+                  style: const TextStyle(
+                    fontFamily: 'Space Mono',
+                    color: kMute,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 9.5,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
-              Icon(icon, size: 16, color: accentColor),
+              Icon(icon, size: 15, color: accentColor),
             ],
           ),
           Text(
@@ -911,7 +955,7 @@ class _KpiCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontFamily: 'Space Mono',
-              fontSize: 17,
+              fontSize: 16,
               fontWeight: FontWeight.w700,
               color: kPaper,
             ),
@@ -920,10 +964,11 @@ class _KpiCard extends StatelessWidget {
             subtext,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: kMute.withValues(alpha: 0.8),
-                  fontSize: 10,
-                ),
+            style: const TextStyle(
+              fontFamily: 'Space Mono',
+              color: kSubtle,
+              fontSize: 9.5,
+            ),
           ),
         ],
       ),
@@ -948,21 +993,23 @@ class _DetailsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF09070E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0x1FFFFFFF), width: 1),
+        color: kCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kLine, width: 1),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
+          const Text(
             'DETAILS',
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: kPaper,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.8,
-                ),
+            style: TextStyle(
+              fontFamily: 'Space Mono',
+              color: kPaper,
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              letterSpacing: 0.5,
+            ),
           ),
           const SizedBox(height: 12),
           _SpecRow(label: 'Address / Host', value: targetInfo.id),
@@ -1012,20 +1059,21 @@ class _SpecRow extends StatelessWidget {
             width: 130,
             child: Text(
               label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: kMute,
-                    fontSize: 11.5,
-                  ),
+              style: const TextStyle(
+                fontSize: 11.5,
+                color: kMute,
+              ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: isWarning ? kFail : kPaper,
-                    fontWeight: isWarning ? FontWeight.w600 : FontWeight.w400,
-                    fontSize: 11.5,
-                  ),
+              style: TextStyle(
+                fontFamily: 'Space Mono',
+                color: isWarning ? kFail : kPaper,
+                fontWeight: isWarning ? FontWeight.w600 : FontWeight.w400,
+                fontSize: 11.5,
+              ),
             ),
           ),
         ],
@@ -1046,9 +1094,9 @@ class _RecentAuditLog extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF09070E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0x1FFFFFFF), width: 1),
+        color: kCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kLine, width: 1),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1057,33 +1105,34 @@ class _RecentAuditLog extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              const Text(
                 'RECENT PINGS',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: kPaper,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.8,
-                    ),
+                style: TextStyle(
+                  fontFamily: 'Space Mono',
+                  color: kPaper,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  letterSpacing: 0.5,
+                ),
               ),
               Text(
                 'Last ${recent.length}',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: kMute,
-                      fontSize: 10,
-                    ),
+                style: const TextStyle(
+                  fontFamily: 'Space Mono',
+                  color: kMute,
+                  fontSize: 10,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           if (recent.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(12),
+            const Padding(
+              padding: EdgeInsets.all(12),
               child: Center(
                 child: Text(
                   'No pings recorded yet',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: kMute,
-                      ),
+                  style: TextStyle(color: kMute, fontSize: 11),
                 ),
               ),
             )
@@ -1117,25 +1166,28 @@ class _AuditItemRow extends StatelessWidget {
         children: [
           Text(
             timeStr,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: kMute,
-                  fontSize: 11,
-                ),
+            style: const TextStyle(
+              fontFamily: 'Space Mono',
+              color: kMute,
+              fontSize: 10.5,
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
             decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.15),
+              color: statusColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: statusColor.withValues(alpha: 0.3)),
             ),
             child: Text(
               statusLabel,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: statusColor,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 9.5,
-                  ),
+              style: TextStyle(
+                fontFamily: 'Space Mono',
+                color: statusColor,
+                fontWeight: FontWeight.w700,
+                fontSize: 9,
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -1146,19 +1198,20 @@ class _AuditItemRow extends StatelessWidget {
                   : (isOk ? 'Success' : 'Error'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: kPaper,
-                    fontSize: 11,
-                  ),
+              style: const TextStyle(
+                fontSize: 11,
+                color: kPaper,
+              ),
             ),
           ),
           Text(
             sample.ms != null ? '${sample.ms}ms' : '-',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: statusColor,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11.5,
-                ),
+            style: TextStyle(
+              fontFamily: 'Space Mono',
+              color: statusColor,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
           ),
         ],
       ),

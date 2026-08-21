@@ -176,7 +176,7 @@ void main() {
       expect(find.byType(ItemLatencyChart), findsOneWidget);
 
       // Test tapping back button
-      await tester.tap(find.byIcon(Icons.arrow_back_ios_new));
+      await tester.tap(find.byIcon(Icons.arrow_back_rounded));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
       expect(find.byType(ItemProfilePage), findsNothing);
@@ -254,7 +254,7 @@ void main() {
 
       expect(find.text('ROUTE MAP · TRACEROUTE'), findsOneWidget);
       expect(find.text('Cloudflare DNS'), findsOneWidget);
-      expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
     });
   });
 

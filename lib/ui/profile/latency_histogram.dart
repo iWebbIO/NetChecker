@@ -20,8 +20,9 @@ class LatencyHistogramCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0D0A14),
-        border: Border.all(color: kLine),
+        color: kCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kLine, width: 1),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -41,23 +42,25 @@ class LatencyHistogramCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
+                  const Text(
                     'FREQUENCY HISTOGRAM',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: kMute,
-                          letterSpacing: 1.2,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
+                    style: TextStyle(
+                      fontFamily: 'Space Mono',
+                      color: kPaper,
+                      letterSpacing: 0.5,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                    ),
                   ),
                 ],
               ),
               Text(
                 '${latencies.length} samples',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: kMute.withValues(alpha: 0.7),
-                      fontSize: 10,
-                    ),
+                style: const TextStyle(
+                  fontFamily: 'Space Mono',
+                  color: kMute,
+                  fontSize: 10,
+                ),
               ),
             ],
           ),

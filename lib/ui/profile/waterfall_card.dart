@@ -21,9 +21,9 @@ class ConnectionWaterfallCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF09070E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0x1FFFFFFF), width: 1),
+        color: kCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kLine, width: 1),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -32,28 +32,30 @@ class ConnectionWaterfallCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 8,
-                height: 8,
+                width: 6,
+                height: 6,
                 decoration: const BoxDecoration(
                   color: Color(0xFF8B5CF6),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
                       color: Color(0x998B5CF6),
-                      blurRadius: 6,
+                      blurRadius: 4,
                       spreadRadius: 1,
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
+              const Text(
                 'SPEED BREAKDOWN',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: kPaper,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.8,
-                    ),
+                style: TextStyle(
+                  fontFamily: 'Space Mono',
+                  color: kPaper,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  letterSpacing: 0.5,
+                ),
               ),
             ],
           ),
@@ -63,36 +65,38 @@ class ConnectionWaterfallCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0x0DFFFFFF),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0x14FFFFFF)),
+                color: const Color(0xFF18181B),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: kLine),
               ),
               child: Row(
                 children: [
                   const Icon(
                     Icons.speed_outlined,
                     color: Color(0xFF8B5CF6),
-                    size: 24,
+                    size: 22,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           'No speed breakdown yet',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: kPaper,
-                                fontWeight: FontWeight.w500,
-                              ),
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            color: kPaper,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                          ),
                         ),
                         const SizedBox(height: 2),
-                        Text(
+                        const Text(
                           'Tap "Ping Now" above to measure DNS, connection, and SSL speed.',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: kMute,
-                                fontSize: 11,
-                              ),
+                          style: TextStyle(
+                            color: kMute,
+                            fontSize: 11,
+                          ),
                         ),
                       ],
                     ),
@@ -153,21 +157,23 @@ class ConnectionWaterfallCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: kFail.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: kFail.withValues(alpha: 0.4), width: 1),
+                color: kFail.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: kFail.withValues(alpha: 0.3), width: 1),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber_rounded, color: kFail, size: 20),
-                  const SizedBox(width: 10),
+                  const Icon(Icons.warning_amber_rounded, color: kFail, size: 18),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Anomaly: ',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: kFail,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      'Anomaly: ${phase!.anomaly!}',
+                      style: const TextStyle(
+                        fontFamily: 'Space Mono',
+                        color: kFail,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
@@ -197,9 +203,9 @@ class _WaterfallProportionBar extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(4),
           child: SizedBox(
-            height: 12,
+            height: 10,
             child: Row(
               children: [
                 if (phase.dnsMs != null && phase.dnsMs! > 0)
@@ -231,11 +237,13 @@ class _WaterfallProportionBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Total Duration: ms',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: kPaper,
-                    fontWeight: FontWeight.w600,
-                  ),
+              'Total Duration: ${phase.totalMs}ms',
+              style: const TextStyle(
+                fontFamily: 'Space Mono',
+                color: kPaper,
+                fontWeight: FontWeight.w600,
+                fontSize: 10.5,
+              ),
             ),
             Row(
               children: [
@@ -267,17 +275,18 @@ class _LegendDot extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 6,
-          height: 6,
+          width: 5,
+          height: 5,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 3),
         Text(
           label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: kMute,
-                fontSize: 9,
-              ),
+          style: const TextStyle(
+            fontFamily: 'Space Mono',
+            color: kMute,
+            fontSize: 9,
+          ),
         ),
       ],
     );
@@ -304,76 +313,87 @@ class _WaterfallStepRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0x0CFFFFFF),
-          borderRadius: BorderRadius.circular(10),
+          color: const Color(0xFF18181B),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isAlert ? kFail.withValues(alpha: 0.5) : const Color(0x14FFFFFF),
+            color: isAlert ? kFail.withValues(alpha: 0.4) : kLine,
           ),
         ),
         child: Row(
           children: [
             Container(
-              width: 22,
-              height: 22,
+              width: 20,
+              height: 20,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: color.withValues(alpha: 0.6)),
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: color.withValues(alpha: 0.5)),
               ),
               child: Center(
                 child: Text(
                   index,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 10,
-                      ),
+                  style: TextStyle(
+                    fontFamily: 'Space Mono',
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 9.5,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     name,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: kPaper,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      color: kPaper,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12.5,
+                    ),
                   ),
                   Text(
                     detail,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: isAlert ? kFail : kMute,
-                          fontSize: 11,
-                        ),
+                    style: TextStyle(
+                      fontFamily: 'Space Mono',
+                      color: isAlert ? kFail : kMute,
+                      fontSize: 10,
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: isAlert
-                    ? kFail.withValues(alpha: 0.2)
-                    : color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(6),
+                    ? kFail.withValues(alpha: 0.15)
+                    : color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: isAlert
+                      ? kFail.withValues(alpha: 0.3)
+                      : color.withValues(alpha: 0.25),
+                ),
               ),
               child: Text(
-                'ms',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: isAlert ? kFail : color,
-                      fontWeight: FontWeight.w700,
-                    ),
+                '${ms}ms',
+                style: TextStyle(
+                  fontFamily: 'Space Mono',
+                  color: isAlert ? kFail : color,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10.5,
+                ),
               ),
             ),
           ],

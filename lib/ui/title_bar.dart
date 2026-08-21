@@ -31,88 +31,170 @@ class DesktopToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final compact = alwaysOnTop;
-    return ColoredBox(
-      color: kInk,
-      child: SizedBox(
-        height: compact ? 28 : 32,
-        child: Row(
-          children: [
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall?.copyWith(fontSize: compact ? 11 : 12),
+    return Container(
+      height: compact ? 36 : 44,
+      decoration: const BoxDecoration(
+        color: kInk,
+        border: Border(bottom: BorderSide(color: kLine, width: 1)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: [
+          // Live Status Dot & Title
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: running ? kOk : kTo,
+              shape: BoxShape.circle,
+              boxShadow: running
+                  ? [
+                      BoxShadow(
+                        color: kOk.withValues(alpha: 0.6),
+                        blurRadius: 4,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+                fontSize: compact ? 11 : 12.5,
+                letterSpacing: -0.2,
+                color: kPaper,
               ),
             ),
-            if (nics.length > 1)
-              SizedBox(
-                width: 168,
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: nics.any((n) => n.$1 == nicId) ? nicId : 'any',
-                    isDense: true,
-                    isExpanded: true,
-                    icon: Text(
-                      '▾',
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                    dropdownColor: const Color(0xFF0C0A10),
-                    style: Theme.of(context).textTheme.labelSmall,
-                    items: [
-                      for (final n in nics)
-                        DropdownMenuItem(value: n.$1, child: Text(n.$2)),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) onNic(v);
-                    },
+          ),
+          const SizedBox(width: 8),
+
+          // NIC Dropdown (if multiple)
+          if (nics.length > 1)
+            Container(
+              height: 28,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              margin: const EdgeInsets.only(right: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF18181B),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: kLine),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: nics.any((n) => n.$1 == nicId) ? nicId : 'any',
+                  isDense: true,
+                  icon: const Icon(Icons.arrow_drop_down_rounded, size: 16, color: kMute),
+                  dropdownColor: const Color(0xFF18181B),
+                  style: const TextStyle(
+                    fontFamily: 'Space Mono',
+                    fontSize: 10,
+                    color: kPaper,
                   ),
+                  items: [
+                    for (final n in nics)
+                      DropdownMenuItem(value: n.$1, child: Text(n.$2)),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) onNic(v);
+                  },
                 ),
               ),
-            _WordBtn(label: running ? 'pause' : 'run', onTap: onToggleRun),
-            _WordBtn(label: alwaysOnTop ? 'unpin' : 'pin', onTap: onTogglePin),
-            _WordBtn(label: 'copy', onTap: onCopy),
-            _WordBtn(label: 'set', onTap: onSettings),
-          ],
-        ),
+            ),
+
+          // Action Button Group
+          _ActionButton(
+            label: running ? 'pause' : 'run',
+            icon: running ? Icons.pause_rounded : Icons.play_arrow_rounded,
+            highlightColor: running ? kOk : kTo,
+            onTap: onToggleRun,
+          ),
+          const SizedBox(width: 4),
+          _ActionButton(
+            label: alwaysOnTop ? 'unpin' : 'pin',
+            icon: alwaysOnTop ? Icons.push_pin_rounded : Icons.push_pin_outlined,
+            onTap: onTogglePin,
+          ),
+          const SizedBox(width: 4),
+          _ActionButton(
+            label: 'copy',
+            icon: Icons.copy_rounded,
+            onTap: onCopy,
+          ),
+          const SizedBox(width: 4),
+          _ActionButton(
+            label: 'set',
+            icon: Icons.tune_rounded,
+            onTap: onSettings,
+          ),
+        ],
       ),
     );
   }
 }
 
-class _WordBtn extends StatefulWidget {
-  const _WordBtn({required this.label, required this.onTap});
+class _ActionButton extends StatefulWidget {
+  const _ActionButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.highlightColor,
+  });
 
   final String label;
+  final IconData icon;
   final VoidCallback onTap;
+  final Color? highlightColor;
 
   @override
-  State<_WordBtn> createState() => _WordBtnState();
+  State<_ActionButton> createState() => _ActionButtonState();
 }
 
-class _WordBtnState extends State<_WordBtn> {
-  bool _hot = false;
+class _ActionButtonState extends State<_ActionButton> {
+  bool _hover = false;
 
   @override
   Widget build(BuildContext context) {
+    final activeColor = widget.highlightColor ?? kPaper;
+
     return MouseRegion(
-      onEnter: (_) => setState(() => _hot = true),
-      onExit: (_) => setState(() => _hot = false),
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
         onTap: widget.onTap,
-        child: ColoredBox(
-          color: _hot ? const Color(0x22FFFFFF) : Colors.transparent,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Text(
-              widget.label,
-              style: Theme.of(
-                context,
-              ).textTheme.labelMedium?.copyWith(color: kPaper),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          decoration: BoxDecoration(
+            color: _hover
+                ? const Color(0xFF27272A)
+                : const Color(0xFF18181B),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: _hover ? kPaper.withValues(alpha: 0.3) : kLine,
             ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(widget.icon, size: 13, color: activeColor),
+              const SizedBox(width: 4),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  fontFamily: 'Space Mono',
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: activeColor,
+                ),
+              ),
+            ],
           ),
         ),
       ),
