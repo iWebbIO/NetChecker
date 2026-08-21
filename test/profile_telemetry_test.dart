@@ -7,6 +7,7 @@ import 'package:netchecker/probe/asn_lookup.dart';
 import 'package:netchecker/probe/engine.dart';
 import 'package:netchecker/probe/geoip.dart';
 import 'package:netchecker/probe/models.dart';
+import 'package:netchecker/probe/tcp.dart';
 import 'package:netchecker/probe/traceroute.dart';
 import 'package:netchecker/theme.dart';
 import 'package:netchecker/ui/cells.dart';
@@ -402,6 +403,38 @@ void main() {
       expect(has4SidedYellow, isFalse);
       expect(find.text('google'), findsOneWidget);
       expect(find.text('25ms'), findsOneWidget);
+    });
+  });
+
+  group('Poisoned DNS HTTP Skip Tests', () {
+    test('TcpTlsProbe.https skips HTTP request when given a poisoned IP directly', () async {
+      final probe = TcpTlsProbe();
+      final hit = await probe.https('10.10.34.36', timeout: const Duration(seconds: 2));
+
+      expect(hit.status, equals(HitStatus.fail));
+      expect(hit.isPoisoned, isTrue);
+      expect(hit.detail, equals('10.10.34.36'));
+      expect(hit.hasPrivateIp, isTrue);
+    });
+
+    test('TcpTlsProbe.connect skips TCP socket connect when given a poisoned IP', () async {
+      final probe = TcpTlsProbe();
+      final hit = await probe.connect('10.10.34.1', 80, timeout: const Duration(seconds: 2));
+
+      expect(hit.status, equals(HitStatus.fail));
+      expect(hit.isPoisoned, isTrue);
+      expect(hit.detail, equals('10.10.34.1'));
+      expect(hit.ms, equals(0));
+    });
+
+    test('TcpTlsProbe.tls skips TLS handshake when given a poisoned IP', () async {
+      final probe = TcpTlsProbe();
+      final hit = await probe.tls('198.18.0.1', 'test.com', timeout: const Duration(seconds: 2));
+
+      expect(hit.status, equals(HitStatus.fail));
+      expect(hit.isPoisoned, isTrue);
+      expect(hit.detail, equals('198.18.0.1'));
+      expect(hit.ms, equals(0));
     });
   });
 }

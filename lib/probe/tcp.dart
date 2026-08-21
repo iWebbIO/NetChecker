@@ -13,6 +13,15 @@ class TcpTlsProbe {
     int port, {
     required Duration timeout,
   }) async {
+    if (isPrivateOrPoisonedIp(host)) {
+      return Hit(
+        status: HitStatus.fail,
+        ms: 0,
+        detail: host,
+        isPoisoned: true,
+        at: DateTime.now(),
+      );
+    }
     final sw = Stopwatch()..start();
     try {
       final socket = await Socket.connect(
@@ -55,6 +64,15 @@ class TcpTlsProbe {
     required Duration timeout,
     int port = 443,
   }) async {
+    if (isPrivateOrPoisonedIp(ip)) {
+      return Hit(
+        status: HitStatus.fail,
+        ms: 0,
+        detail: ip,
+        isPoisoned: true,
+        at: DateTime.now(),
+      );
+    }
     final sw = Stopwatch()..start();
     Socket? raw;
     SecureSocket? secure;
@@ -112,13 +130,32 @@ class TcpTlsProbe {
 
   Future<Hit> https(String host, {required Duration timeout}) async {
     final sw = Stopwatch()..start();
+    if (isPrivateOrPoisonedIp(host)) {
+      sw.stop();
+      return Hit(
+        status: HitStatus.fail,
+        ms: sw.elapsedMilliseconds,
+        detail: host,
+        isPoisoned: true,
+        at: DateTime.now(),
+      );
+    }
+
     HttpClient? client;
     try {
-      // Check DNS resolution for private / poisoned IP
+      // 1. DNS Pre-flight Check: Resolve host to check for private / poisoned IPs
       List<InternetAddress>? addrs;
       try {
-        addrs = await InternetAddress.lookup(host).timeout(
-          timeout > const Duration(seconds: 2) ? const Duration(seconds: 2) : timeout,
+        addrs = await InternetAddress.lookup(host).timeout(timeout);
+      } on SocketException catch (e) {
+        sw.stop();
+        return _fromSocket(e, sw.elapsedMilliseconds);
+      } on TimeoutException {
+        sw.stop();
+        return Hit(
+          status: HitStatus.timeout,
+          ms: sw.elapsedMilliseconds,
+          at: DateTime.now(),
         );
       } catch (_) {}
 
@@ -132,6 +169,7 @@ class TcpTlsProbe {
         }
       }
 
+      // If poisoned/private IP returned (yellow status), SKIP testing the HTTP request!
       if (poisonedIp != null) {
         sw.stop();
         return Hit(
@@ -227,11 +265,28 @@ class TcpTlsProbe {
       dnsMs = dnsSw.elapsedMilliseconds;
       resolvedIps = addrs.map((a) => a.address).toList();
 
+      String? poisonedIp;
       for (final ip in resolvedIps) {
         if (isPrivateOrPoisonedIp(ip)) {
-          anomaly = 'DNS Poisoning (Gov Sinkhole $ip)';
+          poisonedIp = ip;
           break;
         }
+      }
+
+      // If poisoned/private IP returned (turns yellow), SKIP TCP, TLS, and HTTP phases!
+      if (poisonedIp != null) {
+        overallSw.stop();
+        return ProbeSample(
+          timestamp: DateTime.now(),
+          status: HitStatus.fail,
+          ms: overallSw.elapsedMilliseconds,
+          detail: poisonedIp,
+          phase: PhaseBreakdown(
+            dnsMs: dnsMs,
+            resolvedIps: resolvedIps,
+            anomaly: 'DNS Poisoning (Gov Sinkhole $poisonedIp)',
+          ),
+        );
       }
     } on TimeoutException {
       dnsSw.stop();
@@ -415,7 +470,7 @@ class TcpTlsProbe {
       httpMs = httpSw.elapsedMilliseconds;
       httpStatusCode = res.statusCode;
 
-      if (res.statusCode == 403 && anomaly == null) {
+      if (res.statusCode == 403) {
         anomaly = 'HTTP 403 (Censorship / Forbidden)';
       }
     } catch (_) {
