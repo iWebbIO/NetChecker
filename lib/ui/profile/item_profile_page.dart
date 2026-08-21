@@ -600,37 +600,52 @@ class _HeroBanner extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0x14FFFFFF),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
+              InkWell(
+                onTap: () => onToggleLive(!liveMonitor),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  decoration: BoxDecoration(
                     color: liveMonitor
-                        ? const Color(0xFF10B981).withValues(alpha: 0.5)
-                        : const Color(0x1AFFFFFF),
+                        ? const Color(0x1A10B981)
+                        : const Color(0x14FFFFFF),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: liveMonitor
+                          ? const Color(0xFF10B981).withValues(alpha: 0.5)
+                          : const Color(0x1AFFFFFF),
+                    ),
                   ),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                child: Row(
-                  children: [
-                    Text(
-                      'Auto',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: liveMonitor ? const Color(0xFF10B981) : kMute,
-                            fontSize: 11,
-                          ),
-                    ),
-                    const SizedBox(width: 4),
-                    SizedBox(
-                      height: 24,
-                      width: 36,
-                      child: Switch(
-                        value: liveMonitor,
-                        onChanged: onToggleLive,
-                        activeThumbColor: const Color(0xFF10B981),
+                  padding: const EdgeInsets.only(left: 10, right: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Auto',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: liveMonitor
+                                  ? const Color(0xFF10B981)
+                                  : kPaper,
+                              fontSize: 11,
+                              fontWeight: liveMonitor
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                            ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Transform.scale(
+                        scale: 0.72,
+                        child: Switch(
+                          value: liveMonitor,
+                          onChanged: onToggleLive,
+                          activeThumbColor: const Color(0xFF10B981),
+                          activeTrackColor: const Color(0x4D10B981),
+                          inactiveThumbColor: kMute,
+                          inactiveTrackColor: const Color(0x28FFFFFF),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
