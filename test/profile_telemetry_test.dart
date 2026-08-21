@@ -406,35 +406,21 @@ void main() {
     });
   });
 
-  group('Poisoned DNS HTTP Skip Tests', () {
-    test('TcpTlsProbe.https skips HTTP request when given a poisoned IP directly', () async {
+  group('Poisoned DNS HTTP Execution Tests', () {
+    test('TcpTlsProbe.https flags isPoisoned while executing HTTP probe', () async {
       final probe = TcpTlsProbe();
-      final hit = await probe.https('10.10.34.36', timeout: const Duration(seconds: 2));
+      final hit = await probe.https('10.10.34.36', timeout: const Duration(seconds: 1));
 
-      expect(hit.status, equals(HitStatus.fail));
       expect(hit.isPoisoned, isTrue);
       expect(hit.detail, equals('10.10.34.36'));
       expect(hit.hasPrivateIp, isTrue);
     });
 
-    test('TcpTlsProbe.connect skips TCP socket connect when given a poisoned IP', () async {
+    test('TcpTlsProbe.connect executes socket connect for IP targets', () async {
       final probe = TcpTlsProbe();
-      final hit = await probe.connect('10.10.34.1', 80, timeout: const Duration(seconds: 2));
+      final hit = await probe.connect('127.0.0.1', 65530, timeout: const Duration(milliseconds: 500));
 
-      expect(hit.status, equals(HitStatus.fail));
-      expect(hit.isPoisoned, isTrue);
-      expect(hit.detail, equals('10.10.34.1'));
-      expect(hit.ms, equals(0));
-    });
-
-    test('TcpTlsProbe.tls skips TLS handshake when given a poisoned IP', () async {
-      final probe = TcpTlsProbe();
-      final hit = await probe.tls('198.18.0.1', 'test.com', timeout: const Duration(seconds: 2));
-
-      expect(hit.status, equals(HitStatus.fail));
-      expect(hit.isPoisoned, isTrue);
-      expect(hit.detail, equals('198.18.0.1'));
-      expect(hit.ms, equals(0));
+      expect(hit.status, isIn([HitStatus.fail, HitStatus.timeout]));
     });
   });
 }

@@ -13,15 +13,6 @@ class TcpTlsProbe {
     int port, {
     required Duration timeout,
   }) async {
-    if (isPrivateOrPoisonedIp(host)) {
-      return Hit(
-        status: HitStatus.fail,
-        ms: 0,
-        detail: host,
-        isPoisoned: true,
-        at: DateTime.now(),
-      );
-    }
     final sw = Stopwatch()..start();
     try {
       final socket = await Socket.connect(
@@ -64,15 +55,6 @@ class TcpTlsProbe {
     required Duration timeout,
     int port = 443,
   }) async {
-    if (isPrivateOrPoisonedIp(ip)) {
-      return Hit(
-        status: HitStatus.fail,
-        ms: 0,
-        detail: ip,
-        isPoisoned: true,
-        at: DateTime.now(),
-      );
-    }
     final sw = Stopwatch()..start();
     Socket? raw;
     SecureSocket? secure;
@@ -130,57 +112,25 @@ class TcpTlsProbe {
 
   Future<Hit> https(String host, {required Duration timeout}) async {
     final sw = Stopwatch()..start();
-    if (isPrivateOrPoisonedIp(host)) {
-      sw.stop();
-      return Hit(
-        status: HitStatus.fail,
-        ms: sw.elapsedMilliseconds,
-        detail: host,
-        isPoisoned: true,
-        at: DateTime.now(),
+    bool isPoisoned = isPrivateOrPoisonedIp(host);
+    String? poisonedIp = isPoisoned ? host : null;
+
+    // Check DNS resolution for private / poisoned IP without skipping HTTP
+    try {
+      final addrs = await InternetAddress.lookup(host).timeout(
+        timeout > const Duration(seconds: 2) ? const Duration(seconds: 2) : timeout,
       );
-    }
+      for (final a in addrs) {
+        if (isPrivateOrPoisonedIp(a.address)) {
+          isPoisoned = true;
+          poisonedIp = a.address;
+          break;
+        }
+      }
+    } catch (_) {}
 
     HttpClient? client;
     try {
-      // 1. DNS Pre-flight Check: Resolve host to check for private / poisoned IPs
-      List<InternetAddress>? addrs;
-      try {
-        addrs = await InternetAddress.lookup(host).timeout(timeout);
-      } on SocketException catch (e) {
-        sw.stop();
-        return _fromSocket(e, sw.elapsedMilliseconds);
-      } on TimeoutException {
-        sw.stop();
-        return Hit(
-          status: HitStatus.timeout,
-          ms: sw.elapsedMilliseconds,
-          at: DateTime.now(),
-        );
-      } catch (_) {}
-
-      String? poisonedIp;
-      if (addrs != null && addrs.isNotEmpty) {
-        for (final a in addrs) {
-          if (isPrivateOrPoisonedIp(a.address)) {
-            poisonedIp = a.address;
-            break;
-          }
-        }
-      }
-
-      // If poisoned/private IP returned (yellow status), SKIP testing the HTTP request!
-      if (poisonedIp != null) {
-        sw.stop();
-        return Hit(
-          status: HitStatus.fail,
-          ms: sw.elapsedMilliseconds,
-          detail: poisonedIp,
-          isPoisoned: true,
-          at: DateTime.now(),
-        );
-      }
-
       client = HttpClient();
       client.connectionTimeout = timeout;
       client.idleTimeout = timeout;
@@ -205,11 +155,12 @@ class TcpTlsProbe {
       await res.drain<void>();
       sw.stop();
       final code = res.statusCode;
-      final ok = code < 500;
+      final ok = code < 500 && !isPoisoned;
       return Hit(
         status: ok ? HitStatus.ok : HitStatus.fail,
         ms: sw.elapsedMilliseconds,
-        detail: '$code',
+        detail: poisonedIp ?? '$code',
+        isPoisoned: isPoisoned,
         at: DateTime.now(),
       );
     } on TimeoutException {
@@ -217,17 +168,20 @@ class TcpTlsProbe {
       return Hit(
         status: HitStatus.timeout,
         ms: sw.elapsedMilliseconds,
+        detail: poisonedIp ?? 'to',
+        isPoisoned: isPoisoned,
         at: DateTime.now(),
       );
     } on SocketException catch (e) {
       sw.stop();
-      return _fromSocket(e, sw.elapsedMilliseconds);
+      return _fromSocket(e, sw.elapsedMilliseconds, isPoisoned: isPoisoned, poisonedIp: poisonedIp);
     } on HandshakeException {
       sw.stop();
       return Hit(
         status: HitStatus.fail,
         ms: sw.elapsedMilliseconds,
-        detail: 'tls',
+        detail: poisonedIp ?? 'tls',
+        isPoisoned: isPoisoned,
         at: DateTime.now(),
       );
     } catch (e) {
@@ -235,7 +189,8 @@ class TcpTlsProbe {
       return Hit(
         status: HitStatus.fail,
         ms: sw.elapsedMilliseconds,
-        detail: 'fail',
+        detail: poisonedIp ?? 'fail',
+        isPoisoned: isPoisoned,
         at: DateTime.now(),
       );
     } finally {
@@ -265,28 +220,11 @@ class TcpTlsProbe {
       dnsMs = dnsSw.elapsedMilliseconds;
       resolvedIps = addrs.map((a) => a.address).toList();
 
-      String? poisonedIp;
       for (final ip in resolvedIps) {
         if (isPrivateOrPoisonedIp(ip)) {
-          poisonedIp = ip;
+          anomaly = 'DNS Poisoning (Gov Sinkhole $ip)';
           break;
         }
-      }
-
-      // If poisoned/private IP returned (turns yellow), SKIP TCP, TLS, and HTTP phases!
-      if (poisonedIp != null) {
-        overallSw.stop();
-        return ProbeSample(
-          timestamp: DateTime.now(),
-          status: HitStatus.fail,
-          ms: overallSw.elapsedMilliseconds,
-          detail: poisonedIp,
-          phase: PhaseBreakdown(
-            dnsMs: dnsMs,
-            resolvedIps: resolvedIps,
-            anomaly: 'DNS Poisoning (Gov Sinkhole $poisonedIp)',
-          ),
-        );
       }
     } on TimeoutException {
       dnsSw.stop();
@@ -296,7 +234,7 @@ class TcpTlsProbe {
         ms: dnsSw.elapsedMilliseconds,
         detail: 'to',
         phase: PhaseBreakdown(
-          dnsMs: dnsSw.elapsedMilliseconds,
+          dnsMs: dnsMs,
           anomaly: 'DNS Lookup Timed Out',
         ),
       );
@@ -308,7 +246,7 @@ class TcpTlsProbe {
         ms: dnsSw.elapsedMilliseconds,
         detail: 'nx',
         phase: PhaseBreakdown(
-          dnsMs: dnsSw.elapsedMilliseconds,
+          dnsMs: dnsMs,
           anomaly: 'DNS Resolution Failed ($e)',
         ),
       );
@@ -506,12 +444,23 @@ class TcpTlsProbe {
   }
 }
 
-Hit _fromSocket(SocketException e, int ms) {
+Hit _fromSocket(
+  SocketException e,
+  int ms, {
+  bool isPoisoned = false,
+  String? poisonedIp,
+}) {
   final m = e.message.toLowerCase();
   final os = (e.osError?.message ?? '').toLowerCase();
   final blob = '$m $os';
   if (blob.contains('timed out') || blob.contains('timeout')) {
-    return Hit(status: HitStatus.timeout, ms: ms, at: DateTime.now());
+    return Hit(
+      status: HitStatus.timeout,
+      ms: ms,
+      detail: poisonedIp ?? 'to',
+      isPoisoned: isPoisoned,
+      at: DateTime.now(),
+    );
   }
   String detail = 'fail';
   if (blob.contains('unreachable')) detail = 'unreach';
@@ -523,7 +472,8 @@ Hit _fromSocket(SocketException e, int ms) {
   return Hit(
     status: HitStatus.fail,
     ms: ms,
-    detail: detail,
+    detail: poisonedIp ?? detail,
+    isPoisoned: isPoisoned,
     at: DateTime.now(),
   );
 }
