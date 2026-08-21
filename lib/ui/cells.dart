@@ -49,6 +49,8 @@ class ProbeCell extends StatelessWidget {
       }
     }
 
+    final isFail = hit.status == HitStatus.fail;
+
     return Semantics(
       button: true,
       label: '$displayLabel ${hit.readout}',
@@ -72,11 +74,23 @@ class ProbeCell extends StatelessWidget {
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: minTap, minWidth: minTap),
             child: DecoratedBox(
-              decoration: const BoxDecoration(
-                border: Border(
+              decoration: BoxDecoration(
+                border: const Border(
                   right: BorderSide(color: kLine, width: 1),
                   bottom: BorderSide(color: kLine, width: 1),
                 ),
+                gradient: !inverted && isFail
+                    ? RadialGradient(
+                        center: Alignment.bottomRight,
+                        radius: 1.15,
+                        colors: [
+                          const Color(0xFFEF4444).withValues(alpha: 0.38),
+                          const Color(0xFFEF4444).withValues(alpha: 0.12),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.0, 0.45, 1.0],
+                      )
+                    : null,
               ),
               child: Padding(
                 padding: pad,
