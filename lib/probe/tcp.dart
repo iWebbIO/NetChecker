@@ -406,13 +406,13 @@ class TcpTlsProbe {
     }
 
     overallSw.stop();
-    final ok = (httpStatusCode ?? 200) < 500 && anomaly == null;
+    final ok = httpStatusCode < 500 && anomaly == null;
 
     return ProbeSample(
       timestamp: DateTime.now(),
       status: ok ? HitStatus.ok : (anomaly != null ? HitStatus.fail : HitStatus.ok),
       ms: overallSw.elapsedMilliseconds,
-      detail: httpStatusCode != null ? '$httpStatusCode' : 'ok',
+      detail: '$httpStatusCode',
       phase: PhaseBreakdown(
         dnsMs: dnsMs,
         resolvedIps: resolvedIps,

@@ -498,7 +498,7 @@ class _HeroBanner extends StatelessWidget {
                       child: Switch(
                         value: liveMonitor,
                         onChanged: onToggleLive,
-                        activeColor: const Color(0xFF10B981),
+                        activeThumbColor: const Color(0xFF10B981),
                       ),
                     ),
                   ],

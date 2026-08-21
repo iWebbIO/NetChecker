@@ -329,7 +329,7 @@ class _SplineChartPainter extends CustomPainter {
       final val = (maxVal - (maxVal / gridSteps) * i).round();
       canvas.drawLine(Offset(0, y), Offset(width, y), gridPaint);
 
-      final textSpan = TextSpan(text: 'ms', style: textStyle);
+      final textSpan = TextSpan(text: '${val}ms', style: textStyle);
       final textPainter = TextPainter(
         text: textSpan,
         textDirection: TextDirection.ltr,

@@ -58,12 +58,6 @@ void main() {
       await engine.start(loops: false, loadNics: false);
       addTearDown(engine.dispose);
 
-      final info = const ItemProfileInfo(
-        id: 'example.com',
-        category: ItemCategory.domain,
-        title: 'example.com',
-      );
-
       expect(engine.getHistory('example.com'), isEmpty);
       expect(engine.getMetrics('example.com').totalChecks, 0);
     });
