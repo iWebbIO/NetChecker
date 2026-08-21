@@ -63,6 +63,11 @@ class ItemProfileInfo {
     this.hostOrIp,
     this.sni,
     this.port = 443,
+    this.whatItTests,
+    this.whyItMatters,
+    this.provider,
+    this.networkType,
+    this.explanation,
   });
 
   final String id;
@@ -73,19 +78,24 @@ class ItemProfileInfo {
   final String? hostOrIp;
   final String? sni;
   final int port;
+  final String? whatItTests;
+  final String? whyItMatters;
+  final String? provider;
+  final String? networkType;
+  final String? explanation;
 
   String get categoryLabel {
     switch (category) {
       case ItemCategory.domain:
         return 'HTTPS DOMAIN';
       case ItemCategory.dns:
-        return 'DNS RESOLVER';
+        return 'DNS RESOLVER SPEED';
       case ItemCategory.edge:
-        return 'EDGE CDN IP';
+        return 'EDGE CDN ANYCAST IP';
       case ItemCategory.proto:
-        return 'SYSTEM PROTOCOL';
+        return 'CORE NETWORK PROTOCOL';
       case ItemCategory.hunt:
-        return 'DNS POISON HUNT';
+        return 'DNS POISONING DETECTOR';
     }
   }
 }

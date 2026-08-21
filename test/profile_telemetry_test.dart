@@ -128,8 +128,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.byType(ItemProfilePage), findsOneWidget);
-      expect(find.text('DNS RESOLVER'), findsWidgets);
-      expect(find.text('Cloudflare'), findsOneWidget);
+      expect(find.text('DNS RESOLVER SPEED'), findsWidgets);
+      expect(find.textContaining('Cloudflare DNS'), findsOneWidget);
+      expect(find.text('ABOUT THIS TEST & NETWORK ROLE'), findsOneWidget);
     });
 
     testWidgets('Tapping edge target and interacting with chart range selector', (tester) async {
@@ -149,15 +150,18 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.byType(ItemProfilePage), findsOneWidget);
-      expect(find.text('EDGE CDN IP'), findsWidgets);
+      expect(find.text('EDGE CDN ANYCAST IP'), findsWidgets);
+      expect(find.text('ABOUT THIS TEST & NETWORK ROLE'), findsOneWidget);
 
       // Test chart range filter buttons
       expect(find.text('15'), findsOneWidget);
       expect(find.text('30'), findsOneWidget);
       expect(find.text('ALL'), findsOneWidget);
 
+      await tester.ensureVisible(find.text('15'));
       await tester.tap(find.text('15'));
       await tester.pump();
+      await tester.ensureVisible(find.text('ALL'));
       await tester.tap(find.text('ALL'));
       await tester.pump();
 
@@ -183,7 +187,32 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.byType(ItemProfilePage), findsOneWidget);
-      expect(find.text('SYSTEM PROTOCOL'), findsWidgets);
+      expect(find.text('CORE NETWORK PROTOCOL'), findsWidgets);
+      expect(find.text('ABOUT THIS TEST & NETWORK ROLE'), findsOneWidget);
+    });
+
+    testWidgets('Tapping Hunt item opens crystal-clear DNS Poisoning profile', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final engine = ProbeEngine();
+      await engine.start(loops: false, loadNics: false);
+      addTearDown(engine.dispose);
+
+      await tester.pumpWidget(NetCheckerApp(engine: engine, forceDesktop: false));
+      await tester.pump();
+
+      final odFinder = find.text('OD');
+      expect(odFinder, findsWidgets);
+
+      // Tap the second 'OD' which is in the HUNT row
+      await tester.tap(odFinder.last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.byType(ItemProfilePage), findsOneWidget);
+      expect(find.text('DNS POISONING DETECTOR'), findsWidgets);
+      expect(find.textContaining('OpenDNS'), findsWidgets);
+      expect(find.textContaining('DNS Poisoning Check'), findsOneWidget);
+      expect(find.text('ABOUT THIS TEST & NETWORK ROLE'), findsOneWidget);
     });
   });
 }

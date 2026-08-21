@@ -132,22 +132,22 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
   Future<void> _copyReport(ItemMetrics metrics, List<ProbeSample> samples) async {
     final buf = StringBuffer();
     buf.writeln('=== NetChecker Diagnostic Profile ===');
-    buf.writeln('Target: \ (\)');
-    buf.writeln('ID/Host: ');
-    buf.writeln('Timestamp: ');
-    buf.writeln('NIC: \ (\)');
-    buf.writeln('Diagnosis: ');
-    buf.writeln('Uptime: \% (\/\ OK)');
-    buf.writeln('Latency: avg=\ms min=\ms max=\ms jitter=\ms');
+    buf.writeln('Target: ${widget.targetInfo.title} (${widget.targetInfo.categoryLabel})');
+    buf.writeln('ID/Host: ${widget.targetInfo.id}');
+    buf.writeln('Timestamp: ${DateTime.now().toIso8601String()}');
+    buf.writeln('NIC: ${widget.engine.nic.label} (${widget.engine.nic.address ?? "default"})');
+    buf.writeln('Diagnosis: ${metrics.filterStatus}');
+    buf.writeln('Uptime: ${metrics.uptimePercent.toStringAsFixed(1)}% (${metrics.okCount}/${metrics.totalChecks} OK)');
+    buf.writeln('Latency: avg=${metrics.avgMs.toStringAsFixed(1)}ms min=${metrics.minMs}ms max=${metrics.maxMs}ms jitter=${metrics.jitterMs.toStringAsFixed(1)}ms');
     if (_latestPhase != null) {
-      buf.writeln('Phases: DNS=\ms TCP=\ms TLS=\ms HTTP=\ms (Status: \)');
+      buf.writeln('Phases: DNS=${_latestPhase!.dnsMs ?? 0}ms TCP=${_latestPhase!.tcpMs ?? 0}ms TLS=${_latestPhase!.tlsMs ?? 0}ms HTTP=${_latestPhase!.httpMs ?? 0}ms (Status: ${_latestPhase!.httpStatusCode ?? "-"})');
       if (_latestPhase!.resolvedIps != null && _latestPhase!.resolvedIps!.isNotEmpty) {
-        buf.writeln('Resolved IPs: ');
+        buf.writeln('Resolved IPs: ${_latestPhase!.resolvedIps!.join(", ")}');
       }
     }
     buf.writeln('Recent Samples:');
     for (final s in samples.reversed.take(10)) {
-      buf.writeln('  \ - \ (\ms) ');
+      buf.writeln('  ${s.timestamp.toIso8601String()} - ${s.status.name.toUpperCase()} (${s.ms ?? "-"}ms) ${s.detail ?? ""}');
     }
     await Clipboard.setData(ClipboardData(text: buf.toString()));
     if (mounted) {
@@ -223,11 +223,20 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // 2. 4-Card KPI Telemetry Grid
+                  // 2. What Is This Test? (Clarification Hero Card)
+                  _ClarificationCard(
+                    targetInfo: widget.targetInfo,
+                    currentHit: currentHit,
+                    metrics: metrics,
+                    accentColor: accent,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 3. 4-Card KPI Telemetry Grid
                   _KpiMetricGrid(metrics: metrics, accentColor: accent),
                   const SizedBox(height: 16),
 
-                  // 3. Interactive Latency Timeline Chart
+                  // 4. Interactive Latency Timeline Chart
                   ItemLatencyChart(
                     samples: samples,
                     accentColor: accent,
@@ -235,7 +244,7 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // 4. Multi-Phase Connection Waterfall
+                  // 5. Multi-Phase Connection Waterfall
                   ConnectionWaterfallCard(
                     phase: _latestPhase,
                     targetInfo: widget.targetInfo,
@@ -244,7 +253,7 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // 5. Technical Specifications Card
+                  // 6. Technical Specifications Card
                   _TechnicalSpecsCard(
                     targetInfo: widget.targetInfo,
                     engine: widget.engine,
@@ -253,7 +262,7 @@ class _ItemProfilePageState extends State<ItemProfilePage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // 6. Recent Probes Audit Stream
+                  // 7. Recent Probes Audit Stream
                   _RecentAuditLog(samples: samples, accentColor: accent),
                 ],
               ),
@@ -286,28 +295,46 @@ class _HeroBanner extends StatelessWidget {
   final ValueChanged<bool> onToggleLive;
   final VoidCallback onRunDeepProbe;
 
-  String _getMonogram(String title) {
-    final clean = title.replaceAll(RegExp(r'^(https?://|www\.)'), '');
-    if (clean.length <= 2) return clean.toUpperCase();
+  String _getDisplayTag() {
+    if (targetInfo.tag != null && targetInfo.tag!.isNotEmpty) {
+      return targetInfo.tag!;
+    }
+    final clean = targetInfo.title.replaceAll(RegExp(r'^(https?://|www\.)'), '');
+    if (clean.length <= 3) return clean.toUpperCase();
     final parts = clean.split('.');
-    if (parts.length > 1 && parts[0].isNotEmpty) {
-      return parts[0].substring(0, 2).toUpperCase();
+    if (parts.isNotEmpty && parts[0].isNotEmpty) {
+      return parts[0].substring(0, parts[0].length >= 3 ? 3 : parts[0].length).toUpperCase();
     }
     return clean.substring(0, 2).toUpperCase();
   }
 
+  String _getHumanStatusText() {
+    if (currentHit.status == HitStatus.checking) {
+      return 'PROBING TELEMETRY...';
+    }
+    if (currentHit.status == HitStatus.ok) {
+      return 'REACHABLE · ${currentHit.ms ?? 0}ms';
+    }
+    if (currentHit.status == HitStatus.timeout) {
+      return 'TIMEOUT · PACKET DROP';
+    }
+    if (currentHit.status == HitStatus.idle) {
+      return 'IDLE · PENDING CHECK';
+    }
+    final detail = currentHit.detail ?? '';
+    if (detail.contains('rst')) return 'BLOCKED · TCP RESET (RST)';
+    if (detail.contains('tls') || detail.contains('hs')) return 'BLOCKED · TLS SNI FILTER';
+    if (detail.contains('nx')) return 'FAILED · NXDOMAIN';
+    if (detail.startsWith('10.10.34.') || detail == '185.88.153.235') {
+      return 'POISONED · GOV SINKHOLE ($detail)';
+    }
+    return 'FAILED · $detail';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final mono = _getMonogram(targetInfo.title);
-    final statusText = currentHit.status == HitStatus.checking
-        ? 'PROBING TELEMETRY...'
-        : (currentHit.status == HitStatus.ok
-            ? 'ONLINE · \ms'
-            : (currentHit.status == HitStatus.timeout
-                ? 'TIMEOUT'
-                : (currentHit.status == HitStatus.idle
-                    ? 'IDLE'
-                    : 'BLOCKED / FAIL (\)')));
+    final tag = _getDisplayTag();
+    final statusText = _getHumanStatusText();
 
     return Container(
       decoration: BoxDecoration(
@@ -330,11 +357,12 @@ class _HeroBanner extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Monogram / Icon Badge
+              // Monogram / Tag Badge
               Container(
-                width: 52,
-                height: 52,
+                width: 54,
+                height: 54,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -352,11 +380,11 @@ class _HeroBanner extends StatelessWidget {
                 ),
                 child: Center(
                   child: Text(
-                    mono,
+                    tag,
                     style: TextStyle(
                       fontFamily: 'Space Mono',
                       fontWeight: FontWeight.w700,
-                      fontSize: 18,
+                      fontSize: tag.length > 2 ? 14 : 17,
                       color: accentColor,
                     ),
                   ),
@@ -364,26 +392,23 @@ class _HeroBanner extends StatelessWidget {
               ),
               const SizedBox(width: 14),
 
-              // Title and Subtitle
+              // Title, Subtitle, and Type Tag
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       targetInfo.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: kPaper,
-                            fontSize: 20,
+                            fontSize: 18,
+                            height: 1.2,
                           ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
                       targetInfo.subtitle ?? targetInfo.id,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: kMute,
                             fontSize: 12,
@@ -394,7 +419,26 @@ class _HeroBanner extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
+
+          // Metadata Chips Row
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              if (targetInfo.networkType != null)
+                _ChipPill(
+                  label: targetInfo.networkType!,
+                  color: const Color(0xFF8B5CF6),
+                ),
+              if (targetInfo.provider != null)
+                _ChipPill(
+                  label: targetInfo.provider!,
+                  color: const Color(0xFF06B6D4),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
 
           // Status Badge Pill
           Container(
@@ -497,6 +541,189 @@ class _HeroBanner extends StatelessWidget {
   }
 }
 
+class _ChipPill extends StatelessWidget {
+  const _ChipPill({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+      ),
+    );
+  }
+}
+
+class _ClarificationCard extends StatelessWidget {
+  const _ClarificationCard({
+    required this.targetInfo,
+    required this.currentHit,
+    required this.metrics,
+    required this.accentColor,
+  });
+
+  final ItemProfileInfo targetInfo;
+  final Hit currentHit;
+  final ItemMetrics metrics;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final whatItTests = targetInfo.whatItTests ??
+        'Continuously probes network reachability and response latency to this destination.';
+    final whyItMatters = targetInfo.whyItMatters ??
+        'Verifies whether this network component is reachable and operating without firewall interference.';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF09070E),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0x24FFFFFF), width: 1),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.help_outline_rounded,
+                color: Color(0xFF06B6D4),
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'ABOUT THIS TEST & NETWORK ROLE',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: kPaper,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.8,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // What it tests section
+          _ClarificationSection(
+            title: 'What does this probe check?',
+            content: whatItTests,
+            icon: Icons.search_rounded,
+            iconColor: const Color(0xFF06B6D4),
+          ),
+          const SizedBox(height: 12),
+
+          // Why it matters section
+          _ClarificationSection(
+            title: 'Why is this important for your network?',
+            content: whyItMatters,
+            icon: Icons.lightbulb_outline_rounded,
+            iconColor: const Color(0xFFF59E0B),
+          ),
+
+          // Optional extra explanation
+          if (targetInfo.explanation != null &&
+              targetInfo.explanation!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0x14FFFFFF),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0x1EFFFFFF)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    color: Color(0xFF8B5CF6),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      targetInfo.explanation!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: kPaper.withValues(alpha: 0.85),
+                            fontSize: 11,
+                            height: 1.35,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ClarificationSection extends StatelessWidget {
+  const _ClarificationSection({
+    required this.title,
+    required this.content,
+    required this.icon,
+    required this.iconColor,
+  });
+
+  final String title;
+  final String content;
+  final IconData icon;
+  final Color iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 14, color: iconColor),
+            const SizedBox(width: 6),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: kPaper,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11.5,
+                  ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.only(left: 20),
+          child: Text(
+            content,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: kMute,
+                  fontSize: 11.5,
+                  height: 1.35,
+                ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _PulsingDot extends StatefulWidget {
   const _PulsingDot({required this.color});
 
@@ -570,12 +797,12 @@ class _KpiMetricGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final avgStr = metrics.avgMs > 0 ? '\ ms' : '-';
+    final avgStr = metrics.avgMs > 0 ? '${metrics.avgMs.toStringAsFixed(0)} ms' : '-';
     final uptimeStr = metrics.totalChecks > 0
-        ? '\%'
+        ? '${metrics.uptimePercent.toStringAsFixed(0)}%'
         : '-';
     final jitterStr = metrics.jitterMs > 0
-        ? '± \ ms'
+        ? '± ${metrics.jitterMs.toStringAsFixed(1)} ms'
         : '± 0 ms';
 
     return LayoutBuilder(
@@ -593,7 +820,7 @@ class _KpiMetricGrid extends StatelessWidget {
               label: 'AVG LATENCY',
               value: avgStr,
               subtext: metrics.minMs > 0
-                  ? 'Min \ms · Max \ms'
+                  ? 'Min ${metrics.minMs}ms · Max ${metrics.maxMs}ms'
                   : 'Based on recent samples',
               icon: Icons.timer_outlined,
               accentColor: accentColor,
@@ -601,7 +828,7 @@ class _KpiMetricGrid extends StatelessWidget {
             _KpiCard(
               label: 'REACHABILITY',
               value: uptimeStr,
-              subtext: '\ of \ successful',
+              subtext: '${metrics.okCount} of ${metrics.totalChecks} successful',
               icon: Icons.verified_outlined,
               accentColor: metrics.uptimePercent > 80
                   ? const Color(0xFF10B981)
@@ -683,7 +910,7 @@ class _KpiCard extends StatelessWidget {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: 'Space Mono',
               fontSize: 17,
               fontWeight: FontWeight.w700,
@@ -744,9 +971,14 @@ class _TechnicalSpecsCard extends StatelessWidget {
             label: 'Category',
             value: targetInfo.categoryLabel,
           ),
+          if (targetInfo.provider != null)
+            _SpecRow(
+              label: 'Provider / Service',
+              value: targetInfo.provider!,
+            ),
           _SpecRow(
             label: 'Port & Protocol',
-            value: '\ (\)',
+            value: '${targetInfo.port} (${targetInfo.category == ItemCategory.dns ? "UDP/DNS" : "TCP/TLS"})',
           ),
           _SpecRow(
             label: 'SNI Host Indication',
@@ -848,7 +1080,7 @@ class _RecentAuditLog extends StatelessWidget {
                     ),
               ),
               Text(
-                'Latest ',
+                'Latest ${recent.length}',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: kMute,
                       fontSize: 10,
@@ -888,7 +1120,7 @@ class _AuditItemRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final timeStr =
-        '\:\:';
+        '${sample.timestamp.hour.toString().padLeft(2, '0')}:${sample.timestamp.minute.toString().padLeft(2, '0')}:${sample.timestamp.second.toString().padLeft(2, '0')}';
     final isOk = sample.status == HitStatus.ok;
     final statusColor = isOk ? accentColor : (sample.status == HitStatus.timeout ? const Color(0xFFF59E0B) : kFail);
 
@@ -934,7 +1166,7 @@ class _AuditItemRow extends StatelessWidget {
             ),
           ),
           Text(
-            sample.ms != null ? '\ms' : '-',
+            sample.ms != null ? '${sample.ms}ms' : '-',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: statusColor,
                   fontWeight: FontWeight.w700,
